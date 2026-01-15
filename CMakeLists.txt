@@ -15,6 +15,8 @@ add_executable(${PROJECT_NAME}
 target_link_libraries(
     ${PROJECT_NAME}
     log
+    protocol
 )
 
 add_subdirectory(src/log)
+add_subdirectory(src/protocol)

@@ -2,7 +2,6 @@
 // Created by asujy on 2026/1/15.
 //
 
-#include <iostream>
 #include <string>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
@@ -10,6 +9,8 @@
 #include "machine.h"
 #include "Utils.h"
 #include "log/Logger.h"
+#include "protocol/Protocol.h"
+#include "protocol/EthernetPacket.h"
 
 
 constexpr std::uint16_t ETHERNET_HEADER_LEN = 14;  // 以太网帧头长度
@@ -69,29 +70,18 @@ void PacketHandler(u_char *userData,
         return;
     }
 
-    // 转换IP地址
-    char srcIpStr[INET_ADDRSTRLEN] = {0};  // INET_ADDRSTRLEN是IPv4地址字符串最大长度
-    char dstIpStr[INET_ADDRSTRLEN] = {0};
-    // inet_ntop：线程安全，支持IPv4/IPv6，C++11完全兼容
-    if (inet_ntop(AF_INET, &ipHeader->ip_src, srcIpStr, INET_ADDRSTRLEN) == nullptr) {
-        LOG_ERROR << "Failed to convert source IP to string.";
-        return;
-    }
-    if (inet_ntop(AF_INET, &ipHeader->ip_dst, dstIpStr, INET_ADDRSTRLEN) == nullptr) {
-        LOG_ERROR << "Failed to convert destination IP to string.";
-        return;
-    }
-
     // 转换端口号（网络字节序转主机字节序）
     const std::uint16_t srcPort = ntohs(tcpHeader->source);
     const std::uint16_t dstPort = ntohs(tcpHeader->dest);
 
     // 输出信息
-    LOG_INFO << "Source IP: " << srcIpStr;
-    LOG_INFO << "Destination IP: " << dstIpStr;
+    PrintIP("Source IP: ", ipHeader->ip_src);
+    PrintIP("Destination IP: ", ipHeader->ip_dst);
     LOG_INFO << "Source port: " << static_cast<int>(srcPort);
     LOG_INFO << "Destination port: " << static_cast<int>(dstPort);
-    LOG_INFO << "\n";
+
+    Protocol<EthernetPacket> etherProt;
+    etherProt.ParseProtocolHeader(packet);
 }
 
 static void PcapDeleter(pcap_t* ptr) {
@@ -106,10 +96,10 @@ int main()
     Machine_t localMachine;
     localMachine.m_device = GetNetDev(0);
     localMachine.m_ip = GetLocalIP(localMachine.m_device.c_str());
-    localMachine.m_mac = GetLocalMac(localMachine.m_device.c_str()).get();
+    localMachine.m_mac = GetLocalMac(localMachine.m_device.c_str());
     LOG_INFO << localMachine.m_device;
-    LOG_INFO << localMachine.m_ip;
-    LOG_INFO << reinterpret_cast<char*>(localMachine.m_mac);
+    PrintIP("LOCAL IP: ", localMachine.m_ip);
+    PrintMac("LOCAL MAC: ", localMachine.m_mac.get());
 
     // 打开网络设备
     char errBuf[PCAP_ERRBUF_SIZE] = {0};

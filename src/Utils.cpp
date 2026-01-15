@@ -13,6 +13,10 @@
 #include <unistd.h>
 #include <ifaddrs.h>
 #include <cstring>
+#include <cassert>
+#include <sstream>
+#include <iomanip>
+#include <netinet/ether.h>
 
 static void PcapifDeleter(pcap_if_t* ptr) {
     if (ptr != nullptr) {
@@ -118,4 +122,40 @@ std::unique_ptr<unsigned char[]> GetLocalMac(const char* name) {
     std::memcpy(mac.get(), ifr.ifr_hwaddr.sa_data, ETHER_ADDR_LEN);
 
     return mac;
+}
+
+void PrintMac(const char* msg, const unsigned char* mac) {
+    assert(mac != nullptr && "MAC address pointer cannot be null");
+    if (mac == nullptr) {
+        LOG_ERROR << (msg ? msg : "Unknown message") << " - MAC pointer is null!";
+        return;
+    }
+
+    std::ostringstream oss;
+    oss << (msg ? msg : "MAC Address: ");
+    oss << std::hex << std::setfill('0');
+
+    for (std::size_t i = 0; i < ETH_ALEN; ++i) {
+        oss << "0x" << std::setw(2) << static_cast<uint16_t>(mac[i]);
+        if (i < 5) {
+            oss << " ";
+        }
+    }
+    LOG_INFO << oss.str();
+}
+
+void PrintIP(const char* msg, const struct in_addr ip) {
+    char ipStr[INET_ADDRSTRLEN] = {0};
+    if (inet_ntop(AF_INET, &ip, ipStr, INET_ADDRSTRLEN) == nullptr) {
+        LOG_ERROR << "Failed to convert IP to string!";
+    }
+    LOG_INFO << msg << ipStr;
+}
+
+void PrintIP(const char* msg, const std::uint32_t ip) {
+    char ipStr[INET_ADDRSTRLEN] = {0};
+    if (inet_ntop(AF_INET, &ip, ipStr, INET_ADDRSTRLEN) == nullptr) {
+        LOG_ERROR << "Failed to convert IP to string.";
+    }
+    LOG_INFO << msg << ipStr;
 }
