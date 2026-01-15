@@ -3,6 +3,7 @@
 //
 
 #include "Utils.h"
+#include "log/Logger.h"
 
 #include <memory>
 #include <pcap.h>
@@ -21,28 +22,28 @@ static void PcapifDeleter(pcap_if_t* ptr) {
 
 std::string GetNetDev(int index) {
     if (index < 0) {
-        std::cerr << "Error: Invalid device index (" << index
-                    << ") - index must be non-negative." << std::endl;
+        LOG_ERROR << "Invalid device index (" << index
+                    << ") - index must be non-negative.";
         std::exit(EXIT_FAILURE);
     }
 
     char errBuf[PCAP_ERRBUF_SIZE] = {0};
     pcap_if_t* allDevRaw = nullptr;
     if (pcap_findalldevs(&allDevRaw, errBuf) == -1) {
-        std::cerr << "Error: pcap_findalldevs failed - " << errBuf << std::endl;
+        LOG_ERROR << "pcap_findalldevs failed - " << errBuf;
         std::exit(EXIT_FAILURE);
     }
     std::unique_ptr<pcap_if_t, decltype(PcapifDeleter)*> allDev(allDevRaw, PcapifDeleter);
     pcap_if_t* pdev = allDev.get();
     for (;pdev != nullptr && index > 0; pdev = pdev->next, --index);
     if (pdev == nullptr) {
-        std::cerr << "Error: Device index (" << index
-                    << ") out of range - no such network device." << std::endl;
+        LOG_ERROR << "Device index (" << index
+                    << ") out of range - no such network device.";
         std::exit(EXIT_FAILURE);
     }
     if (pdev->name == nullptr) {
-        std::cerr << "Error: Network device at index " << index
-                    << " has no valid name." << std::endl;
+        LOG_ERROR << "Network device at index "
+                    << index << " has no valid name.";
         std::exit(EXIT_FAILURE);
     }
 
@@ -58,15 +59,13 @@ static void IfaddrsDeleter(struct ifaddrs* ptr) {
 
 std::uint32_t GetLocalIP(const char* name) {
     if (name == nullptr || *name == '\0') {
-        std::cerr << "Error: Invalid network interface name (null or empty)."
-                    << std::endl;
+        LOG_ERROR << "Invalid network interface name (null or empty).";
         std::exit(EXIT_FAILURE); // C++11标准退出码
     }
 
     struct ifaddrs* ifapRaw = nullptr;
     if (getifaddrs(&ifapRaw) != 0) {
-        std::cerr << "Error: getifaddrs failed - "
-                    << std::strerror(errno) << std::endl;
+        LOG_ERROR << "getifaddrs failed - " << std::strerror(errno);
         std::exit(EXIT_FAILURE);
     }
     std::unique_ptr<struct ifaddrs, decltype(IfaddrsDeleter)*> ifap(ifapRaw, IfaddrsDeleter);
@@ -80,8 +79,8 @@ std::uint32_t GetLocalIP(const char* name) {
         }
     }
     if (sa == nullptr) {
-        std::cerr << "Error: Failed to find IPv4 address for interface '"
-                  << name << "'." << std::endl;
+        LOG_ERROR << "Failed to find IPv4 address for interface '"
+                  << name << "'.";
         std::exit(EXIT_FAILURE);
     }
     auto ip = sa->sin_addr.s_addr;
@@ -91,8 +90,7 @@ std::uint32_t GetLocalIP(const char* name) {
 std::unique_ptr<unsigned char[]> GetLocalMac(const char* name) {
     std::unique_ptr<unsigned char[]> mac(new unsigned char[ETHER_ADDR_LEN]());
     if (!mac) {
-        std::cerr << "Error: Failed to allocate memory for MAC address."
-                    << std::endl;
+        LOG_ERROR << "Failed to allocate memory for MAC address.";
         std::exit(EXIT_FAILURE);
     }
 
@@ -100,11 +98,11 @@ std::unique_ptr<unsigned char[]> GetLocalMac(const char* name) {
     std::memset(&ifr, 0, sizeof(ifr));
     int fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (fd < 0) {
-        std::cerr << "socket fail: " << std::strerror(errno) << std::endl;
+        LOG_ERROR << "socket fail: " << std::strerror(errno);
         std::exit(EXIT_FAILURE);
     }
     if (name == nullptr) {
-        std::cerr << "Error: Network device name is null." << std::endl;
+        LOG_ERROR << "Network device name is null.";
         std::exit(EXIT_FAILURE);
     }
 
@@ -113,7 +111,7 @@ std::unique_ptr<unsigned char[]> GetLocalMac(const char* name) {
 
     // 获取mac地址
     if (ioctl(fd, SIOCGIFHWADDR, &ifr) < 0) {
-        std::cerr << "ioctl fail: " << std::strerror(errno) << std::endl;
+        LOG_ERROR << "ioctl fail: " << std::strerror(errno);
         close(fd);
         std::exit(EXIT_FAILURE);
     }

@@ -9,6 +9,7 @@
 
 #include "machine.h"
 #include "Utils.h"
+#include "log/Logger.h"
 
 
 constexpr std::uint16_t ETHERNET_HEADER_LEN = 14;  // 以太网帧头长度
@@ -23,14 +24,14 @@ constexpr std::uint8_t IP_VERSION_4 = 4;           // IPv4版本标识
 void PacketHandler(u_char *userData,
     const struct pcap_pkthdr *pkthdr, const u_char *packet) {
     if (pkthdr == nullptr || packet == nullptr) {
-        std::cerr << "Error: Invalid packet data (null pointer)." << std::endl;
+        LOG_ERROR << "Invalid packet data (null pointer).";
         return;
     }
 
     // 检查数据包长度是否足够容纳以太网头（避免越界访问）
     if (pkthdr->len < ETHERNET_HEADER_LEN) {
-        std::cerr << "Error: Packet too short (len=" << pkthdr->len
-                  << ") to contain Ethernet header." << std::endl;
+        LOG_ERROR << "Packet too short (len=" << pkthdr->len
+                  << ") to contain Ethernet header.";
         return;
     }
 
@@ -39,22 +40,22 @@ void PacketHandler(u_char *userData,
         packet + ETHERNET_HEADER_LEN);
     // 检查IP版本（仅处理IPv4）
     if (ipHeader->ip_v != IP_VERSION_4) {
-        std::cerr << "Warning: Non-IPv4 packet detected (version="
-            << static_cast<int>(ipHeader->ip_v) << "), skipped." << std::endl;
+        LOG_WARN << "Non-IPv4 packet detected (version="
+                    << static_cast<int>(ipHeader->ip_v) << "), skipped.";
         return;
     }
     // 检查IP头长度合法性（ip_hl单位是4字节，需≥5且≤15）
     if (ipHeader->ip_hl < MIN_IP_HEADER_LEN || ipHeader->ip_hl > 15) {
-        std::cerr << "Error: Invalid IP header length (ip_hl="
-            << static_cast<int>(ipHeader->ip_hl) << "), skipped." << std::endl;
+        LOG_ERROR << "Invalid IP header length (ip_hl="
+                    << static_cast<int>(ipHeader->ip_hl) << "), skipped.";
         return;
     }
     const std::uint16_t ipHeaderLen = ipHeader->ip_hl * 4;  // 转换为字节数
     // 检查数据包长度是否足够容纳IP头
     if (pkthdr->len < ETHERNET_HEADER_LEN + ipHeaderLen) {
-        std::cerr << "Error: Packet too short (len=" << pkthdr->len
+        LOG_ERROR << "Packet too short (len=" << pkthdr->len
                   << ") to contain IP header (need="
-                  << ETHERNET_HEADER_LEN + ipHeaderLen << ")." << std::endl;
+                  << ETHERNET_HEADER_LEN + ipHeaderLen << ").";
         return;
     }
 
@@ -63,8 +64,8 @@ void PacketHandler(u_char *userData,
     // 检查数据包长度是否足够容纳TCP头（TCP头最小20字节）
     if (pkthdr->len <
         ETHERNET_HEADER_LEN + ipHeaderLen + sizeof(struct tcphdr)) {
-        std::cerr << "Error: Packet too short (len=" << pkthdr->len
-                  << ") to contain TCP header, skipped." << std::endl;
+        LOG_ERROR << "Packet too short (len=" << pkthdr->len
+                  << ") to contain TCP header, skipped.";
         return;
     }
 
@@ -73,13 +74,11 @@ void PacketHandler(u_char *userData,
     char dstIpStr[INET_ADDRSTRLEN] = {0};
     // inet_ntop：线程安全，支持IPv4/IPv6，C++11完全兼容
     if (inet_ntop(AF_INET, &ipHeader->ip_src, srcIpStr, INET_ADDRSTRLEN) == nullptr) {
-        std::cerr << "Error: Failed to convert source IP to string."
-            << std::endl;
+        LOG_ERROR << "Failed to convert source IP to string.";
         return;
     }
     if (inet_ntop(AF_INET, &ipHeader->ip_dst, dstIpStr, INET_ADDRSTRLEN) == nullptr) {
-        std::cerr << "Error: Failed to convert destination IP to string."
-            << std::endl;
+        LOG_ERROR << "Failed to convert destination IP to string.";
         return;
     }
 
@@ -88,11 +87,11 @@ void PacketHandler(u_char *userData,
     const std::uint16_t dstPort = ntohs(tcpHeader->dest);
 
     // 输出信息
-    std::cout << "Source IP: " << srcIpStr << std::endl;
-    std::cout << "Destination IP: " << dstIpStr << std::endl;
-    std::cout << "Source port: " << static_cast<int>(srcPort) << std::endl;
-    std::cout << "Destination port: " << static_cast<int>(dstPort) << std::endl;
-    std::cout << std::endl;
+    LOG_INFO << "Source IP: " << srcIpStr;
+    LOG_INFO << "Destination IP: " << dstIpStr;
+    LOG_INFO << "Source port: " << static_cast<int>(srcPort);
+    LOG_INFO << "Destination port: " << static_cast<int>(dstPort);
+    LOG_INFO << "\n";
 }
 
 static void PcapDeleter(pcap_t* ptr) {
@@ -103,21 +102,22 @@ static void PcapDeleter(pcap_t* ptr) {
 
 int main()
 {
+    Logger::Config("NetProtocol.log");
     Machine_t localMachine;
     localMachine.m_device = GetNetDev(0);
     localMachine.m_ip = GetLocalIP(localMachine.m_device.c_str());
     localMachine.m_mac = GetLocalMac(localMachine.m_device.c_str()).get();
-    std::cout << localMachine.m_device << std::endl;
-    std::cout << localMachine.m_ip << std::endl;
-    std::cout << localMachine.m_mac << std::endl;
+    LOG_INFO << localMachine.m_device;
+    LOG_INFO << localMachine.m_ip;
+    LOG_INFO << reinterpret_cast<char*>(localMachine.m_mac);
 
     // 打开网络设备
     char errBuf[PCAP_ERRBUF_SIZE] = {0};
     auto handlerRaw =
         pcap_open_live(localMachine.m_device.c_str(), BUFSIZ, 1, 1000, errBuf);
     if (handlerRaw == nullptr) {
-        std::cerr << "Error: Couldn't open device '" << localMachine.m_device
-                  << "' - " << errBuf << std::endl;
+        LOG_ERROR << "Couldn't open device '" << localMachine.m_device
+                  << "' - " << errBuf;
         return EXIT_FAILURE;
     }
 
@@ -125,12 +125,10 @@ int main()
     std::unique_ptr<pcap_t, decltype(PcapDeleter)*> handler(handlerRaw, PcapDeleter);
     int ret = pcap_loop(handler.get(), 0, PacketHandler, nullptr);
     if (ret == -1) {
-        std::cerr << "Error: pcap_loop failed - "
-                    << pcap_geterr(handler.get()) << std::endl;
+        LOG_ERROR << "pcap_loop failed - " << pcap_geterr(handler.get());
         return EXIT_FAILURE;
     } else if (ret == -2) {
-        std::cerr << "Info: pcap_loop was interrupted (normal exit)."
-                    << std::endl;
+        LOG_ERROR << "pcap_loop was interrupted (normal exit).";
         return EXIT_FAILURE;
     }
 
