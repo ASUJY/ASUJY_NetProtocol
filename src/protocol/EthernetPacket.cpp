@@ -6,7 +6,6 @@
 #include "log/Logger.h"
 #include "Utils.h"
 
-#include <sstream>
 #include <iomanip>
 #include <arpa/inet.h>
 
@@ -25,9 +24,6 @@ bool EthernetPacket::ParseProtocolHeader(const unsigned char* packet) {
     m_header.etherType = eHeader->etherType;
     PrintMac("Destination MAC: ", m_header.etherDHost);
     PrintMac("SOURCE MAC: ", m_header.etherSHost);
-    std::ostringstream oss;
-    oss << std::setfill('0') << std::setw(4) << std::hex
-        << ntohs(m_header.etherType) << std::endl;
-    LOG_INFO << "protocol: 0x" << oss.str();
+    Print4Hex("protocol: 0x", m_header.etherType);
     return true;
 }

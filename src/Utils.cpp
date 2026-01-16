@@ -144,7 +144,7 @@ void PrintMac(const char* msg, const unsigned char* mac) {
     LOG_INFO << oss.str();
 }
 
-void PrintIP(const char* msg, const struct in_addr ip) {
+void PrintIP(const char* msg, const in_addr ip) {
     char ipStr[INET_ADDRSTRLEN] = {0};
     if (inet_ntop(AF_INET, &ip, ipStr, INET_ADDRSTRLEN) == nullptr) {
         LOG_ERROR << "Failed to convert IP to string!";
@@ -158,4 +158,24 @@ void PrintIP(const char* msg, const std::uint32_t ip) {
         LOG_ERROR << "Failed to convert IP to string.";
     }
     LOG_INFO << msg << ipStr;
+}
+
+void PrintIP(const char* msg, const std::uint8_t ip[]) {
+    char ipStr[INET_ADDRSTRLEN] = {0};
+    if (inet_ntop(AF_INET, &ip, ipStr, INET_ADDRSTRLEN) == nullptr) {
+        LOG_ERROR << "Failed to convert IP to string.";
+    }
+    LOG_INFO << msg << ipStr;
+}
+
+void Print2Hex(const std::string msg, std::uint16_t hex) {
+    std::ostringstream oss;
+    oss << std::setfill('0') << std::setw(2) << std::hex << hex;
+    LOG_INFO << msg << oss.str();
+}
+
+void Print4Hex(const std::string msg, std::uint16_t hex) {
+    std::ostringstream oss;
+    oss << std::hex << std::setfill('0') << std::setw(4) << hex;
+    LOG_INFO << msg << oss.str();
 }

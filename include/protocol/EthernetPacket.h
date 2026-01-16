@@ -25,6 +25,9 @@ public:
     ~EthernetPacket() = default;
 
     bool ParseProtocolHeader(const unsigned char* packet);
+    ether_header_t GetHeader() const{
+        return m_header;
+    }
 private:
     ether_header_t m_header;
 };

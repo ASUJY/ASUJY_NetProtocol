@@ -7,6 +7,7 @@
 #include "Utils.h"
 #include "protocol/Protocol.h"
 #include "protocol/EthernetPacket.h"
+#include "protocol/ARPPacket.h"
 
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
@@ -30,6 +31,17 @@ void PacketHandler(unsigned char *userData,
         return;
     }
 
-    Protocol<EthernetPacket> etherProt;
+    Protocol<EthernetPacket, ether_header_t> etherProt;
     etherProt.ParseProtocolHeader(packet);
+    auto protocolType = ntohs(etherProt.GetHeader().etherType);
+    switch (protocolType) {
+    case ETHERTYPE_ARP:
+        PacketHandlerARP(packet);
+        break;
+    }
+}
+
+void PacketHandlerARP(const unsigned char *packet) {
+    Protocol<ARPPacket, arp_header_t> arpProt;
+    arpProt.ParseProtocolHeader(packet);
 }

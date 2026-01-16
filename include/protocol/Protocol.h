@@ -5,7 +5,7 @@
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
 
-template<typename T>
+template<typename T, typename T1>
 class Protocol {
 public:
     Protocol() = default;
@@ -16,12 +16,19 @@ public:
     ~Protocol() = default;
 
     bool ParseProtocolHeader(const unsigned char* packet);
+    T1 GetHeader();
+private:
+    T m_packet;
 };
 
-template <typename T>
-bool Protocol<T>::ParseProtocolHeader(const unsigned char* packet) {
-    T prot;
-    return prot.ParseProtocolHeader(packet);
+template <typename T, typename T1>
+bool Protocol<T, T1>::ParseProtocolHeader(const unsigned char* packet) {
+    return m_packet.ParseProtocolHeader(packet);
+}
+
+template <typename T, typename T1>
+T1 Protocol<T, T1>::GetHeader() {
+    return m_packet.GetHeader();
 }
 
 
