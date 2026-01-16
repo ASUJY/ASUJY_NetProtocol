@@ -23,56 +23,12 @@ void PacketHandler(unsigned char *userData,
         return;
     }
 
-    // 检查数据包长度是否足够容纳以太网头（避免越界访问）
+    // 检查数据包长度是否足够容纳以太网头
     if (pkthdr->len < ETHERNET_HEADER_LEN) {
         LOG_ERROR << "Packet too short (len=" << pkthdr->len
                   << ") to contain Ethernet header.";
         return;
     }
-
-    // 获取IP header和TCP header的位置
-    const struct ip *ipHeader = reinterpret_cast<const struct ip*>(
-        packet + ETHERNET_HEADER_LEN);
-    // 检查IP版本（仅处理IPv4）
-    if (ipHeader->ip_v != IP_VERSION_4) {
-        LOG_WARN << "Non-IPv4 packet detected (version="
-                    << static_cast<int>(ipHeader->ip_v) << "), skipped.";
-        return;
-    }
-    // 检查IP头长度合法性（ip_hl单位是4字节，需≥5且≤15）
-    if (ipHeader->ip_hl < MIN_IP_HEADER_LEN || ipHeader->ip_hl > 15) {
-        LOG_ERROR << "Invalid IP header length (ip_hl="
-                    << static_cast<int>(ipHeader->ip_hl) << "), skipped.";
-        return;
-    }
-    const std::uint16_t ipHeaderLen = ipHeader->ip_hl * 4;  // 转换为字节数
-    // 检查数据包长度是否足够容纳IP头
-    if (pkthdr->len < ETHERNET_HEADER_LEN + ipHeaderLen) {
-        LOG_ERROR << "Packet too short (len=" << pkthdr->len
-                  << ") to contain IP header (need="
-                  << ETHERNET_HEADER_LEN + ipHeaderLen << ").";
-        return;
-    }
-
-    const struct tcphdr *tcpHeader = reinterpret_cast<const struct tcphdr *>(
-        packet + ETHERNET_HEADER_LEN + ipHeaderLen);
-    // 检查数据包长度是否足够容纳TCP头（TCP头最小20字节）
-    if (pkthdr->len <
-        ETHERNET_HEADER_LEN + ipHeaderLen + sizeof(struct tcphdr)) {
-        LOG_ERROR << "Packet too short (len=" << pkthdr->len
-                  << ") to contain TCP header, skipped.";
-        return;
-    }
-
-    // 转换端口号（网络字节序转主机字节序）
-    const std::uint16_t srcPort = ntohs(tcpHeader->source);
-    const std::uint16_t dstPort = ntohs(tcpHeader->dest);
-
-    // 输出信息
-    PrintIP("Source IP: ", ipHeader->ip_src);
-    PrintIP("Destination IP: ", ipHeader->ip_dst);
-    LOG_INFO << "Source port: " << static_cast<int>(srcPort);
-    LOG_INFO << "Destination port: " << static_cast<int>(dstPort);
 
     Protocol<EthernetPacket> etherProt;
     etherProt.ParseProtocolHeader(packet);
