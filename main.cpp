@@ -9,6 +9,7 @@
 #include "Utils.h"
 #include "log/Logger.h"
 #include "handler/PacketHandler.h"
+#include "db/MySQLManager.h"
 
 static void PcapDeleter(pcap_t* ptr) {
     if (ptr != nullptr) {
@@ -26,6 +27,8 @@ int main()
     LOG_INFO << "NetWork Card Name: " << localMachine.m_device;
     PrintIP("LOCAL IP: ", localMachine.m_ip);
     PrintMac("LOCAL MAC: ", localMachine.m_mac.get());
+
+    MySQLManager dbManager;
 
     // 打开网络设备
     char errBuf[PCAP_ERRBUF_SIZE] = {0};
