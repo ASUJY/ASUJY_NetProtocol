@@ -22,8 +22,8 @@ bool EthernetPacket::ParseProtocolHeader(const unsigned char* packet) {
     std::copy(eHeader->etherSHost,eHeader->etherSHost + ETH_ALEN,
         m_header.etherSHost);
     m_header.etherType = eHeader->etherType;
-    PrintMac("Destination MAC: ", m_header.etherDHost);
-    PrintMac("SOURCE MAC: ", m_header.etherSHost);
-    Print4Hex("protocol: 0x", m_header.etherType);
+    // PrintMac("Destination MAC: ", m_header.etherDHost);
+    // PrintMac("SOURCE MAC: ", m_header.etherSHost);
+    // Print4Hex("protocol: 0x", m_header.etherType);
     return true;
 }

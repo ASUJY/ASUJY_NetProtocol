@@ -11,11 +11,11 @@
 #include "LogStreamBuf.h"
 
 #ifndef LOG_LINE_BUFFER_SIZE
-#define LOG_LINE_BUFFER_SIZE (1 << 12)  // 4KB行缓冲区
+#define LOG_LINE_BUFFER_SIZE (1 << 7)  // 128B行缓冲区
 #endif
 
 #ifndef LOG_BUFFER_SIZE
-#define LOG_BUFFER_SIZE (1 << 13)       // 8KB总缓冲区
+#define LOG_BUFFER_SIZE (1 << 8)       // 256B总缓冲区
 #endif
 
 class LogStream {

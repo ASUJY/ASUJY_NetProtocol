@@ -179,3 +179,26 @@ void Print4Hex(const std::string msg, std::uint16_t hex) {
     oss << std::hex << std::setfill('0') << std::setw(4) << hex;
     LOG_INFO << msg << oss.str();
 }
+
+std::string IPv4ToStr(const std::uint8_t ip[4]) {
+    std::stringstream oss;
+    for (int i = 0; i < 4; ++i) {
+        oss << static_cast<int>(ip[i]);
+        if (i != 3) {
+            oss << ".";
+        }
+    }
+    return oss.str();
+}
+
+std::string MacToStr(const std::uint8_t mac[ETH_ALEN], const std::string& sep) {
+    std::stringstream oss;
+    oss << std::hex << std::setfill('0') << std::uppercase;
+    for (int i = 0; i < ETH_ALEN; ++i) {
+        oss << std::setw(2) << static_cast<unsigned int>(mac[i]);
+        if (i != ETH_ALEN - 1) {
+            oss << sep;
+        }
+    }
+    return oss.str();
+}

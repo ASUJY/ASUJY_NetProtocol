@@ -28,8 +28,6 @@ int main()
     PrintIP("LOCAL IP: ", localMachine.m_ip);
     PrintMac("LOCAL MAC: ", localMachine.m_mac.get());
 
-    MySQLManager dbManager;
-
     // 打开网络设备
     char errBuf[PCAP_ERRBUF_SIZE] = {0};
     auto handlerRaw =

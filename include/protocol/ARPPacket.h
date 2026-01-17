@@ -6,6 +6,7 @@
 #define ARPPACKET_H
 
 #include <netinet/ether.h>
+#include "db/MySQLManager.h"
 
 constexpr int IP_LEN = 4;
 
@@ -22,6 +23,7 @@ struct arp_header_t {
 } __attribute__ ((__packed__));
 
 class ARPPacket {
+    using ResultSet = std::map<std::string, std::vector<std::string>>;
 public:
     ARPPacket() = default;
     ARPPacket(const ARPPacket&) = default;
@@ -33,8 +35,16 @@ public:
     bool ParseProtocolHeader(const unsigned char* packet);
 private:
     void PrintARPHeader();
+
+    static MySQLManager& DBManager() {
+        static MySQLManager dbManager;
+        return dbManager;
+    }
+    bool InsertARPInfoToDB(std::string ip, std::string mac);
+    bool UpdateARPInfo();
 private:
     arp_header_t m_header;
+    static ResultSet m_resultSet;
 };
 
 #endif //ARPPACKET_H

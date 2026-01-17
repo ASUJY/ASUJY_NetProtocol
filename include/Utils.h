@@ -7,6 +7,7 @@
 
 #include <string>
 #include <memory>
+#include <netinet/ether.h>
 
 std::string GetNetDev(int index);
 std::uint32_t GetLocalIP(const char* name);
@@ -19,5 +20,8 @@ void PrintIP(const char* msg, const std::uint8_t ip[]);
 
 void Print2Hex(const std::string msg, std::uint16_t hex);
 void Print4Hex(const std::string msg, std::uint16_t hex);
+
+std::string IPv4ToStr(const std::uint8_t ip[4]);
+std::string MacToStr(const std::uint8_t mac[ETH_ALEN], const std::string& sep = ":");
 
 #endif //UTILS_H
