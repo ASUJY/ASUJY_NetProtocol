@@ -161,11 +161,7 @@ void PrintIP(const char* msg, const std::uint32_t ip) {
 }
 
 void PrintIP(const char* msg, const std::uint8_t ip[]) {
-    char ipStr[INET_ADDRSTRLEN] = {0};
-    if (inet_ntop(AF_INET, &ip, ipStr, INET_ADDRSTRLEN) == nullptr) {
-        LOG_ERROR << "Failed to convert IP to string.";
-    }
-    LOG_INFO << msg << ipStr;
+    LOG_INFO << msg << IPv4ToStr(ip);;
 }
 
 void Print2Hex(const std::string msg, std::uint16_t hex) {

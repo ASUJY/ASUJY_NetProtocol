@@ -17,11 +17,14 @@ bool ARPPacket::ParseProtocolHeader(const unsigned char *packet) {
         reinterpret_cast<const arp_header_t*>(packet + sizeof(ether_header_t));
 
     std::copy(arp->tpa, arp->tpa + IP_LEN, m_header.tpa);
+    std::copy(arp->tha, arp->tha + ETH_ALEN, m_header.tha);
     std::string tpa(IPv4ToStr(m_header.tpa));
+    std::string tha(MacToStr(m_header.tha));
     if (m_resultSet.empty()) {
         UpdateARPInfo();
     }
-    if (m_resultSet.find(tpa) == m_resultSet.end()) {
+    auto iter = m_resultSet.find(tpa);
+    if (iter == m_resultSet.end()) {
         m_header.hrd  = arp->hrd;
         m_header.prot = arp->prot;
         m_header.hln  = arp->hln;
@@ -29,16 +32,18 @@ bool ARPPacket::ParseProtocolHeader(const unsigned char *packet) {
         m_header.op   = arp->op;
         std::copy(arp->sha, arp->sha + ETH_ALEN, m_header.sha);
         std::copy(arp->spa, arp->spa + IP_LEN, m_header.spa);
-        std::copy(arp->tha, arp->tha + ETH_ALEN, m_header.tha);
         PrintARPHeader();
 
-        std::string tha(MacToStr(m_header.tha));
         if (InsertARPInfoToDB(tpa, tha)) {
             UpdateARPInfo();
             if (m_resultSet.find(tpa) == m_resultSet.end()) {
                 LOG_ERROR << "插入失败！";
                 return false;
             }
+        }
+    } else {
+        if (iter->second[1].compare("00:00:00:00:00:00") == 0) {
+            UpdateARPInfoToDB(tpa, tha);
         }
     }
 
@@ -63,6 +68,15 @@ bool ARPPacket::InsertARPInfoToDB(std::string ip, std::string mac) {
     sql += "', '";
     sql += mac;
     sql += "');";
+    return DBManager().ExecuteNonQuery(sql);
+}
+
+bool ARPPacket::UpdateARPInfoToDB(std::string ip, std::string mac) {
+    std::string sql = "UPDATE arp_info SET mac = '";
+    sql += mac;
+    sql += "' WHERE ipv4 = '";
+    sql += ip;
+    sql += "';";
     return DBManager().ExecuteNonQuery(sql);
 }
 

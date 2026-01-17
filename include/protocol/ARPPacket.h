@@ -41,6 +41,7 @@ private:
         return dbManager;
     }
     bool InsertARPInfoToDB(std::string ip, std::string mac);
+    bool UpdateARPInfoToDB(std::string ip, std::string mac);
     bool UpdateARPInfo();
 private:
     arp_header_t m_header;
