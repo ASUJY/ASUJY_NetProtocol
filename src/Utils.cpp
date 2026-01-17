@@ -202,3 +202,14 @@ std::string MacToStr(const std::uint8_t mac[ETH_ALEN], const std::string& sep) {
     }
     return oss.str();
 }
+
+std::string GetBasename(const std::string &path) {
+    std::string basename = path;
+    auto lastSlash = basename.find_last_of("/");
+    if (lastSlash != std::string::npos) {
+        basename = basename.substr(lastSlash + 1);
+    } else {
+        basename = "";
+    }
+    return basename;
+}

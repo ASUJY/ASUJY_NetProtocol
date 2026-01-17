@@ -4,12 +4,12 @@
 
 #include <string>
 #include <netinet/ip.h>
+#include <iostream>
 
 #include "machine.h"
 #include "Utils.h"
 #include "log/Logger.h"
 #include "handler/PacketHandler.h"
-#include "db/MySQLManager.h"
 
 static void PcapDeleter(pcap_t* ptr) {
     if (ptr != nullptr) {
@@ -17,9 +17,22 @@ static void PcapDeleter(pcap_t* ptr) {
     }
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+    if (argc <= 1) {
+        std::string filename = "programe";
+        if (argc > 0 && argv[0]) {
+            filename = argv[0];
+            filename = GetBasename(filename);
+        }
+        std::cout << "Usage: " << filename << " IP Address!" << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
+
     Logger::Config("NetProtocol.log");
+    Machine_t targetMachine;
+    targetMachine.m_ip = inet_addr(argv[1]);
+    PrintIP("Target IP: ", targetMachine.m_ip);
     Machine_t localMachine;
     localMachine.m_device = GetNetDev(0);
     localMachine.m_ip = GetLocalIP(localMachine.m_device.c_str());

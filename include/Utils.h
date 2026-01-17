@@ -24,4 +24,6 @@ void Print4Hex(const std::string msg, std::uint16_t hex);
 std::string IPv4ToStr(const std::uint8_t ip[4]);
 std::string MacToStr(const std::uint8_t mac[ETH_ALEN], const std::string& sep = ":");
 
+std::string GetBasename(const std::string& path);
+
 #endif //UTILS_H
