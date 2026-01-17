@@ -15,5 +15,6 @@ constexpr std::uint8_t IP_VERSION_4 = 4;           // IPv4版本标识
 void PacketHandler(unsigned char *userData, const struct pcap_pkthdr *pkthdr,
                         const unsigned char *packet);
 void PacketHandlerARP(const unsigned char *packet);
+void PacketHandlerIP(const unsigned char *packet);
 
 #endif //PACKETHANDLER_H

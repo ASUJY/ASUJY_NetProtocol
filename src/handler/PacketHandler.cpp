@@ -8,6 +8,7 @@
 #include "protocol/Protocol.h"
 #include "protocol/EthernetPacket.h"
 #include "protocol/ARPPacket.h"
+#include "protocol/IPPacket.h"
 
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
@@ -38,10 +39,18 @@ void PacketHandler(unsigned char *userData,
     case ETHERTYPE_ARP:
         PacketHandlerARP(packet);
         break;
+    case IPV4_PROTOCOL:
+        PacketHandlerIP(packet);
+        break;
     }
 }
 
 void PacketHandlerARP(const unsigned char *packet) {
     Protocol<ARPPacket, arp_header_t> arpProt;
     arpProt.ParseProtocolHeader(packet);
+}
+
+void PacketHandlerIP(const unsigned char *packet) {
+    Protocol<IPPacket, ip_header_t> ipProt;
+    ipProt.ParseProtocolHeader(packet);
 }
