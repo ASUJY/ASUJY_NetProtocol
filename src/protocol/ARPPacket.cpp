@@ -6,10 +6,13 @@
 #include "protocol/EthernetPacket.h"
 #include "Utils.h"
 #include "log/Logger.h"
+#include "machine.h"
+#include "protocol/Protocol.h"
 
 #include <memory>
-#include <arpa/inet.h>
+#include <pcap.h>
 
+extern Machine_t g_localMachine;
 ARPPacket::ResultSet ARPPacket::m_resultSet{};
 
 bool ARPPacket::ParseProtocolHeader(const unsigned char *packet) {
@@ -83,4 +86,54 @@ bool ARPPacket::UpdateARPInfoToDB(std::string ip, std::string mac) {
 bool ARPPacket::UpdateARPInfo() {
     std::string sql = "select ipv4,mac from arp_info";
     return DBManager().ExecuteQuery(sql, m_resultSet);
+}
+
+bool ARPPacket::SendProtocolPacket() {
+    std::string targetIP(IPv4ToStr(m_header.tpa));
+    auto iter = m_resultSet.find(targetIP);
+    if (m_resultSet.empty()) {
+        UpdateARPInfo();
+    }
+    if (iter == m_resultSet.end() || (iter->second[1].compare("00:00:00:00:00:00") == 0)) {
+        auto len = sizeof(struct ether_header_t) + sizeof(struct arp_header_t);
+        std::unique_ptr<unsigned char[]> packet(new unsigned char[len]());
+        if (!packet) {
+            LOG_ERROR << "数据包缓冲区内存分配失败";
+            return false;
+        }
+
+        unsigned char broadcastMac[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+        ether_header_t etherHeader;
+        memcpy(etherHeader.etherDHost , broadcastMac, ETHER_ADDR_LEN);
+        memcpy(etherHeader.etherSHost , g_localMachine.m_mac.get(), ETHER_ADDR_LEN);
+        etherHeader.etherType = htons(ETHERTYPE_ARP);
+
+        CreateProtocolHeader();
+
+        memcpy(packet.get(), &etherHeader, sizeof(ether_header_t));
+        memcpy(packet.get() + sizeof(ether_header_t),
+            &m_header, sizeof(arp_header_t));
+
+        int sent = pcap_sendpacket(g_localMachine.m_handler, packet.get(), len);
+        if (sent < 0) {
+            LOG_ERROR << "pcap_sendpacket failed: "
+                        << pcap_geterr(g_localMachine.m_handler);
+        } else {
+            LOG_INFO << "[success] sent ARP request package..";
+        }
+    }
+
+    return true;
+}
+
+bool ARPPacket::CreateProtocolHeader() {
+    m_header.hrd = htons(0x0001);
+    m_header.prot = htons(IPV4_PROTOCOL);
+    m_header.hln = 6;
+    m_header.pln = 4;
+    m_header.op = htons(ARPOP_REQUEST);
+    memcpy(m_header.sha, g_localMachine.m_mac.get(), ETHER_ADDR_LEN);
+    memcpy(m_header.spa, &g_localMachine.m_ip, sizeof(uint32_t));
+    bzero(m_header.tha, ETHER_ADDR_LEN);
+    return true;
 }
