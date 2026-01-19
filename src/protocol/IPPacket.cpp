@@ -5,11 +5,12 @@
 #include "protocol/IPPacket.h"
 #include "Utils.h"
 #include "log/Logger.h"
+#include "protocol/EthernetPacket.h"
 #include <arpa/inet.h>
 
 bool IPPacket::ParseProtocolHeader(const unsigned char *packet) {
     const ip_header_t* ip =
-        reinterpret_cast<const ip_header_t*>(packet + sizeof(struct ip_header_t));
+        reinterpret_cast<const ip_header_t*>(packet + sizeof(struct ether_header_t));
     m_header.version_ihl = ip->version_ihl;
     m_header.tos = ip->tos;
     m_header.total_length = ip->total_length;

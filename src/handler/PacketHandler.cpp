@@ -9,6 +9,7 @@
 #include "protocol/EthernetPacket.h"
 #include "protocol/ARPPacket.h"
 #include "protocol/IPPacket.h"
+#include "protocol/ICMPPacket.h"
 
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
@@ -53,4 +54,14 @@ void PacketHandlerARP(const unsigned char *packet) {
 void PacketHandlerIP(const unsigned char *packet) {
     Protocol<IPPacket, ip_header_t> ipProt;
     ipProt.ParseProtocolHeader(packet);
+    switch (ipProt.GetHeader().protocol) {
+    case IP_PROTOCOL_ICMP:
+        PacketHandlerICMP(packet);
+        break;
+    }
+}
+
+void PacketHandlerICMP(const unsigned char *packet) {
+    Protocol<ICMPPacket, icmp_header_t> icmpProt;
+    icmpProt.ParseProtocolHeader(packet);
 }

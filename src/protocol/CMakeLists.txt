@@ -3,4 +3,5 @@ add_library(
     EthernetPacket.cpp
     ARPPacket.cpp
     IPPacket.cpp
+    ICMPPacket.cpp
 )

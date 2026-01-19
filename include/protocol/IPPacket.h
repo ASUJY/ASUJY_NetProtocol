@@ -30,6 +30,9 @@ public:
     ~IPPacket() = default;
 
     bool ParseProtocolHeader(const unsigned char* packet);
+    ip_header_t GetHeader() const {
+        return m_header;
+    }
 
 private:
     void PrintIPHeader();

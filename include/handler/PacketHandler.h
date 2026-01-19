@@ -16,5 +16,6 @@ void PacketHandler(unsigned char *userData, const struct pcap_pkthdr *pkthdr,
                         const unsigned char *packet);
 void PacketHandlerARP(const unsigned char *packet);
 void PacketHandlerIP(const unsigned char *packet);
+void PacketHandlerICMP(const unsigned char *packet);
 
 #endif //PACKETHANDLER_H

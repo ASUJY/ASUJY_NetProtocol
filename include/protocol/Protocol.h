@@ -6,6 +6,7 @@
 #define PROTOCOL_H
 
 #define IPV4_PROTOCOL   0x0800
+#define IP_PROTOCOL_ICMP    1
 
 template<typename T, typename T1>
 class Protocol {
