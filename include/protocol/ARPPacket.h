@@ -5,9 +5,9 @@
 #ifndef ARPPACKET_H
 #define ARPPACKET_H
 
-#include <cstring>
 #include <netinet/ether.h>
 #include "db/MySQLManager.h"
+#include "protocol/Protocol.h"
 
 constexpr int IP_LEN = 4;
 
@@ -34,15 +34,15 @@ public:
     ~ARPPacket() = default;
 
     bool ParseProtocolHeader(const unsigned char* packet);
-    bool SendProtocolPacket();
-    bool CreateProtocolHeader();
+    bool SendProtocolPacket(const Machine_t &localMachine,
+        const Machine_t &targetMachine);
+    bool CreateProtocolHeader(const Machine_t &localMachine,
+        const Machine_t &targetMachine);
     arp_header_t GetHeader() const{
         return m_header;
     }
-    void SetTargetIP(uint32_t ip) {
-        memcpy(m_header.tpa, &ip, sizeof(uint32_t));
-    }
-
+public:
+    static ResultSet m_resultSet;
 private:
     void PrintARPHeader();
 
@@ -55,7 +55,6 @@ private:
     bool UpdateARPInfo();
 private:
     arp_header_t m_header;
-    static ResultSet m_resultSet;
 };
 
 #endif //ARPPACKET_H

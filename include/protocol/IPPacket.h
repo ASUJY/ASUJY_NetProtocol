@@ -5,7 +5,7 @@
 #ifndef IPPACKET_H
 #define IPPACKET_H
 
-#include <string>
+#include "protocol/Protocol.h"
 
 struct ip_header_t {
     uint8_t  version_ihl;     // 版本和头部长度
@@ -30,6 +30,8 @@ public:
     ~IPPacket() = default;
 
     bool ParseProtocolHeader(const unsigned char* packet);
+    bool CreateProtocolHeader(const Machine_t &localMachine,
+        const Machine_t &targetMachine);
     ip_header_t GetHeader() const {
         return m_header;
     }

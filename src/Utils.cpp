@@ -187,6 +187,12 @@ std::string IPv4ToStr(const std::uint8_t ip[4]) {
     return oss.str();
 }
 
+std::string IPv4ToStr(const uint32_t ip) {
+    uint8_t ipv4[4] = {0};
+    memcpy(ipv4, &ip, sizeof(uint32_t));
+    return IPv4ToStr(ipv4);
+}
+
 std::string MacToStr(const std::uint8_t mac[ETH_ALEN], const std::string& sep) {
     std::stringstream oss;
     oss << std::hex << std::setfill('0') << std::uppercase;
@@ -199,6 +205,18 @@ std::string MacToStr(const std::uint8_t mac[ETH_ALEN], const std::string& sep) {
     return oss.str();
 }
 
+std::unique_ptr<unsigned char[]> StrToMac(std::string mac, const char sep) {
+    std::stringstream oss(mac);
+    std::string tmp;
+    int i = 0;
+    std::unique_ptr<unsigned char[]> res(new unsigned char[6]);
+    while (std::getline(oss, tmp, sep) && i < 6) {
+        unsigned long val = strtoul(tmp.c_str(), nullptr, 16);
+        res[i++] = static_cast<uint8_t>(val);
+    }
+    return res;
+}
+
 std::string GetBasename(const std::string &path) {
     std::string basename = path;
     auto lastSlash = basename.find_last_of("/");
@@ -208,4 +226,23 @@ std::string GetBasename(const std::string &path) {
         basename = "";
     }
     return basename;
+}
+
+uint16_t IPChecksum(uint16_t *data, int length) {
+    uint32_t sum = 0;
+
+    while (length > 1) {
+        sum += *data++;
+        length -= 2;
+    }
+
+    if (length == 1) {
+        sum += *((uint8_t*) data);
+    }
+
+    while (sum >> 16) {
+        sum = (sum & 0xFFFF) + (sum >> 16);
+    }
+
+    return (uint16_t) ~sum;
 }

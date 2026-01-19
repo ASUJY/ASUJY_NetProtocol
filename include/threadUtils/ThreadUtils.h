@@ -5,8 +5,9 @@
 #ifndef THREADUTILS_H
 #define THREADUTILS_H
 
-#include <cstdint>
+#include "machine.h"
 
-void Worker(uint32_t ip);
+void Worker(Machine_t &localMachine, Machine_t &targetMachine,
+    std::string protocolType);
 
 #endif //THREADUTILS_H

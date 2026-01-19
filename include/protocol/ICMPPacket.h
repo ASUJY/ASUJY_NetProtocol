@@ -5,7 +5,7 @@
 #ifndef ICMPPACKET_H
 #define ICMPPACKET_H
 
-#include <string>
+#include "protocol/Protocol.h"
 
 struct icmp_header_t{
     uint8_t  type;           // 类型
@@ -25,6 +25,9 @@ public:
     ~ICMPPacket() = default;
 
     bool ParseProtocolHeader(const unsigned char* packet);
+    bool SendProtocolPacket(const Machine_t &localMachine,
+        const Machine_t &targetMachine);
+    bool CreateProtocolHeader();
 private:
     void PrintICMPHeader();
 private:

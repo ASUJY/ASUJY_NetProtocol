@@ -8,6 +8,8 @@
 #define IPV4_PROTOCOL   0x0800
 #define IP_PROTOCOL_ICMP    1
 
+#include "machine.h"
+
 template<typename T, typename T1>
 class Protocol {
 public:
@@ -19,7 +21,8 @@ public:
     ~Protocol() = default;
 
     bool ParseProtocolHeader(const unsigned char* packet);
-    bool SendProtocolPacket();
+    bool SendProtocolPacket(const Machine_t &localMachine,
+        const Machine_t &targetMachine);
     T1 GetHeader();
     void SetTargetIP(uint32_t ip);
 private:
@@ -37,8 +40,9 @@ T1 Protocol<T, T1>::GetHeader() {
 }
 
 template <typename T, typename T1>
-bool Protocol<T, T1>::SendProtocolPacket() {
-    return m_packet.SendProtocolPacket();
+bool Protocol<T, T1>::SendProtocolPacket(const Machine_t &localMachine,
+    const Machine_t &targetMachine) {
+    return m_packet.SendProtocolPacket(localMachine, targetMachine);
 }
 
 template <typename T, typename T1>

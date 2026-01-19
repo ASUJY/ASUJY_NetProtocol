@@ -22,8 +22,11 @@ void Print2Hex(const std::string msg, std::uint16_t hex);
 void Print4Hex(const std::string msg, std::uint16_t hex);
 
 std::string IPv4ToStr(const std::uint8_t ip[4]);
+std::string IPv4ToStr(const uint32_t ip);
 std::string MacToStr(const std::uint8_t mac[ETH_ALEN], const std::string& sep = ":");
-
+std::unique_ptr<unsigned char[]> StrToMac(std::string mac, const char sep = ':');
 std::string GetBasename(const std::string& path);
+
+uint16_t IPChecksum(uint16_t *data, int length);
 
 #endif //UTILS_H
