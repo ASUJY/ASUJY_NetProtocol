@@ -121,7 +121,7 @@ bool ARPPacket::SendProtocolPacket(
                         << pcap_geterr(localMachine.m_handler);
             return false;
         } else {
-            LOG_INFO << "[success] sent ARP request package..";
+            LOG_INFO << "[success] sent ARP request package......";
         }
     }
 
