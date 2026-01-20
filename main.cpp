@@ -35,6 +35,9 @@ int main(int argc, char* argv[])
     Logger::Config("NetProtocol.log");
     Machine_t targetMachine;
     targetMachine.m_ip = inet_addr(argv[1]);
+    if (argc > 3) {
+        targetMachine.m_port = std::stoi(argv[3]);
+    }
     PrintIP("Target IP: ", targetMachine.m_ip);
     Machine_t localMachine;
     localMachine.m_device = GetNetDev(0);

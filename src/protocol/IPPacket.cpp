@@ -39,15 +39,15 @@ void IPPacket::PrintIPHeader() {
 }
 
 bool IPPacket::CreateProtocolHeader(
-    const Machine_t &localMachine, const Machine_t &targetMachine) {
+    const Machine_t &localMachine, const Machine_t &targetMachine,
+    uint16_t len, uint8_t protocol) {
     m_header.version_ihl = 0x45;
     m_header.tos = 0;
-    m_header.total_length = htons(sizeof(ip_header_t) +
-        sizeof(icmp_header_t));
+    m_header.total_length = htons(len);
     m_header.identification = htons(1);
     m_header.flags_fragment = htons(0x4000);
     m_header.ttl = 64;
-    m_header.protocol = 1;
+    m_header.protocol = protocol;
     m_header.checksum = 0;
     m_header.src_ip = localMachine.m_ip;
     m_header.dst_ip = targetMachine.m_ip;

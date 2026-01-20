@@ -45,7 +45,8 @@ bool ICMPPacket::SendProtocolPacket(
     etherHeader.etherType = htons(ETHERTYPE_IP);
 
     IPPacket ipPacket;
-    ipPacket.CreateProtocolHeader(localMachine, targetMachine);
+    ipPacket.CreateProtocolHeader(localMachine, targetMachine,
+        sizeof(ip_header_t) + sizeof(icmp_header_t), IP_PROTOCOL_ICMP);
     auto ipHeader = ipPacket.GetHeader();
 
     CreateProtocolHeader();

@@ -28,5 +28,8 @@ std::unique_ptr<unsigned char[]> StrToMac(std::string mac, const char sep = ':')
 std::string GetBasename(const std::string& path);
 
 uint16_t IPChecksum(uint16_t *data, int length);
+uint16_t TCPChecksum(const uint8_t* pseudoHeader, size_t pseudoHeaderLen,
+    const uint8_t* tcpHeader, size_t tcpHeaderLen, const uint8_t* options,
+    size_t optionsLen, const uint8_t* data, size_t dataLen);
 
 #endif //UTILS_H

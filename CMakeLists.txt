@@ -14,17 +14,17 @@ add_executable(${PROJECT_NAME}
     src/Utils.cpp
 )
 
-target_link_libraries(
-    ${PROJECT_NAME}
-    log
-    handler
-    protocol
-    db
-    threadUtils
-)
-
 add_subdirectory(src/log)
 add_subdirectory(src/handler)
 add_subdirectory(src/protocol)
 add_subdirectory(src/db)
 add_subdirectory(src/threadUtils)
+
+target_link_libraries(
+    ${PROJECT_NAME}
+    log
+    handler
+    threadUtils
+    protocol
+    db
+)

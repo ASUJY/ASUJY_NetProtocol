@@ -31,7 +31,7 @@ public:
 
     bool ParseProtocolHeader(const unsigned char* packet);
     bool CreateProtocolHeader(const Machine_t &localMachine,
-        const Machine_t &targetMachine);
+        const Machine_t &targetMachine, uint16_t len, uint8_t protocol);
     ip_header_t GetHeader() const {
         return m_header;
     }

@@ -246,3 +246,53 @@ uint16_t IPChecksum(uint16_t *data, int length) {
 
     return (uint16_t) ~sum;
 }
+
+uint16_t TCPChecksum(const uint8_t* pseudoHeader, size_t pseudoHeaderLen,
+    const uint8_t* tcpHeader, size_t tcpHeaderLen, const uint8_t* options,
+    size_t optionsLen, const uint8_t* data, size_t dataLen) {
+    uint32_t sum = 0;
+    uint16_t *buf;
+    size_t len = pseudoHeaderLen + tcpHeaderLen + optionsLen + dataLen;
+
+    // Allocate a buffer to hold the pseudo-header, TCP header, and data
+    uint8_t *packet = (uint8_t *) malloc(len);
+    if (packet == NULL) {
+        fprintf(stderr, "Failed to allocate memory for TCP packet\n");
+        return 0;
+    }
+
+    // Copy the pseudo-header, TCP header, and data into the packet buffer
+    std::memcpy(packet, pseudoHeader, pseudoHeaderLen);
+    std::memcpy(packet + pseudoHeaderLen, tcpHeader, tcpHeaderLen);
+
+    if (optionsLen > 0) {
+        std::memcpy(packet + pseudoHeaderLen + tcpHeaderLen, options, optionsLen);
+    }
+
+    if (dataLen > 0) {
+        std::memcpy(packet + pseudoHeaderLen + tcpHeaderLen + optionsLen, data, dataLen);
+    }
+
+    // Check if the length of the data is odd, and add a padding byte if necessary
+    if (len % 2 != 0) {
+        packet[len] = 0;
+        len += 1;
+    }
+
+    // Compute the checksum using 16-bit words
+    buf = (uint16_t *) packet;
+    for (size_t i = 0; i < len / 2; i++) {
+        sum += ntohs(buf[i]);
+    }
+
+    // Fold the result to get the 16-bit checksum
+    while (sum >> 16) {
+        sum = (sum & 0xFFFF) + (sum >> 16);
+    }
+
+    uint16_t checksum = ~sum;
+
+    free(packet);
+
+    return checksum;
+}

@@ -24,7 +24,9 @@ public:
     bool SendProtocolPacket(const Machine_t &localMachine,
         const Machine_t &targetMachine);
     T1 GetHeader();
-    void SetTargetIP(uint32_t ip);
+    void SetFlag(uint8_t flag);
+    void SetSeqNum(uint32_t num);
+    void SetAckNum(uint32_t num);
 private:
     T m_packet;
 };
@@ -46,8 +48,18 @@ bool Protocol<T, T1>::SendProtocolPacket(const Machine_t &localMachine,
 }
 
 template <typename T, typename T1>
-void Protocol<T, T1>::SetTargetIP(uint32_t ip) {
-    m_packet.SetTargetIP(ip);
+void Protocol<T, T1>::SetFlag(uint8_t flag) {
+    m_packet.SetFlag(flag);
+}
+
+template <typename T, typename T1>
+void Protocol<T, T1>::SetAckNum(uint32_t num) {
+    m_packet.SetAckNum(num);
+}
+
+template <typename T, typename T1>
+void Protocol<T, T1>::SetSeqNum(uint32_t num) {
+    m_packet.SetSeqNum(num);
 }
 
 #endif //PROTOCOL_H

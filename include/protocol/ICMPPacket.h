@@ -7,6 +7,8 @@
 
 #include "protocol/Protocol.h"
 
+#define IP_PROTOCOL_ICMP     1
+
 struct icmp_header_t{
     uint8_t  type;           // 类型
     uint8_t  code;           // 代码
