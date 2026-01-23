@@ -11,6 +11,8 @@
 
 #define IP_PROTOCOL_TCP     6
 #define TCP_SYN     0x02
+#define TCP_ACK     0x10
+#define TCP_SYN_ACK TCP_SYN | TCP_ACK
 
 // 伪包头（tcp、udp用）
 struct pseudo_header_t{
@@ -42,6 +44,7 @@ public:
     TCPPacket& operator=(TCPPacket&&) = default;
     ~TCPPacket() = default;
 
+    bool ParseProtocolHeader(const unsigned char* packet);
     bool SendProtocolPacket(
         const Machine_t &localMachine, const Machine_t &targetMachine);
     bool CreateProtocolHeader(
@@ -57,6 +60,11 @@ public:
     void SetAckNum(uint32_t num) {
         m_header.ack_num = num;
     }
+    tcp_header_t GetHeader() {
+        return m_header;
+    }
+private:
+    void PrintTCPHeader();
 private:
     tcp_header_t m_header;
     pseudo_header_t m_pheader;

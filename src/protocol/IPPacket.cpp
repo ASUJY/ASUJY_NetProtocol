@@ -21,7 +21,7 @@ bool IPPacket::ParseProtocolHeader(const unsigned char *packet) {
     m_header.checksum = ip->checksum;
     m_header.src_ip = ip->src_ip;
     m_header.dst_ip = ip->dst_ip;
-    PrintIPHeader();
+    // PrintIPHeader();
     return true;
 }
 

@@ -35,14 +35,15 @@ int main(int argc, char* argv[])
     Logger::Config("NetProtocol.log");
     Machine_t targetMachine;
     targetMachine.m_ip = inet_addr(argv[1]);
-    if (argc > 3) {
-        targetMachine.m_port = std::stoi(argv[3]);
-    }
     PrintIP("Target IP: ", targetMachine.m_ip);
     Machine_t localMachine;
     localMachine.m_device = GetNetDev(0);
     localMachine.m_ip = GetLocalIP(localMachine.m_device.c_str());
     localMachine.m_mac = GetLocalMac(localMachine.m_device.c_str());
+    if (argc > 4) {
+        targetMachine.m_port = std::stoi(argv[3]);
+        localMachine.m_port = std::stoi(argv[4]);
+    }
     LOG_INFO << "NetWork Card Name: " << localMachine.m_device;
     PrintIP("LOCAL IP: ", localMachine.m_ip);
     PrintMac("LOCAL MAC: ", localMachine.m_mac.get());
@@ -60,11 +61,14 @@ int main(int argc, char* argv[])
     std::thread sendPacketThread(Worker, std::ref(localMachine),
         std::ref(targetMachine), argv[2]);
     sendPacketThread.detach();
-
+    Machine_t machines[2];
+    memcpy(&machines[0], &localMachine, sizeof(localMachine));
+    memcpy(&machines[1], &targetMachine, sizeof(targetMachine));
     // 抓包处理
     std::unique_ptr<pcap_t, decltype(PcapDeleter)*>
         handler(localMachine.m_handler, PcapDeleter);
-    int ret = pcap_loop(handler.get(), 0, PacketHandler, nullptr);
+    int ret = pcap_loop(handler.get(), 0, PacketHandler,
+        reinterpret_cast<u_char*>(machines));
     if (ret == -1) {
         LOG_ERROR << "pcap_loop failed - " << pcap_geterr(handler.get());
         return EXIT_FAILURE;

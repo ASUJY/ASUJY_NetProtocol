@@ -10,9 +10,11 @@
 #include "protocol/ARPPacket.h"
 #include "protocol/IPPacket.h"
 #include "protocol/ICMPPacket.h"
+#include "protocol/TCPPacket.h"
 
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
+#include <iostream>
 
 /*
  * 每抓到一个包就会执行packet_handler
@@ -41,7 +43,7 @@ void PacketHandler(unsigned char *userData,
         PacketHandlerARP(packet);
         break;
     case IPV4_PROTOCOL:
-        PacketHandlerIP(packet);
+        PacketHandlerIP(userData, packet);
         break;
     }
 }
@@ -51,12 +53,24 @@ void PacketHandlerARP(const unsigned char *packet) {
     arpProt.ParseProtocolHeader(packet);
 }
 
-void PacketHandlerIP(const unsigned char *packet) {
+void PacketHandlerIP(unsigned char *userData, const unsigned char *packet) {
     Protocol<IPPacket, ip_header_t> ipProt;
     ipProt.ParseProtocolHeader(packet);
+    Machine_t* machine = reinterpret_cast<Machine_t*>(userData);
+    // 非发往本机的数据包不进行处理
+    if (ipProt.GetHeader().dst_ip != machine[0].m_ip) {
+        return;
+    }
+
     switch (ipProt.GetHeader().protocol) {
     case IP_PROTOCOL_ICMP:
         PacketHandlerICMP(packet);
+        break;
+    case IP_PROTOCOL_TCP:
+        PacketHandlerTCP(userData, packet);
+        break;
+    default:
+        LOG_WARN << "未做处理的协议类型: " << ipProt.GetHeader().protocol;
         break;
     }
 }
@@ -64,4 +78,33 @@ void PacketHandlerIP(const unsigned char *packet) {
 void PacketHandlerICMP(const unsigned char *packet) {
     Protocol<ICMPPacket, icmp_header_t> icmpProt;
     icmpProt.ParseProtocolHeader(packet);
+}
+
+void PacketHandlerTCP(unsigned char *userData, const unsigned char *packet) {
+    Protocol<TCPPacket, tcp_header_t> tcpProt;
+    tcpProt.ParseProtocolHeader(packet);
+    Machine_t* machine = reinterpret_cast<Machine_t*>(userData);
+
+    std::string targetIP(IPv4ToStr(machine[1].m_ip));
+    auto iter = ARPPacket::m_resultSet.find(IPv4ToStr(machine[1].m_ip));
+    machine[1].m_mac = StrToMac(iter->second[1]);
+
+    switch (tcpProt.GetHeader().flags) {
+        case TCP_SYN_ACK: {
+            uint32_t ackNum = ntohl(tcpProt.GetHeader().ack_num);
+            uint32_t sequenceNum = ntohl(tcpProt.GetHeader().sequence_num);
+            tcpProt.SetFlag(TCP_ACK);
+            tcpProt.SetAckNum(htonl(sequenceNum + 1));
+            tcpProt.SetSeqNum(htonl(ackNum));
+            tcpProt.SendProtocolPacket(machine[0], machine[1]);
+        }
+        case TCP_ACK: {
+            std::cout << "发送给服务器的数据：";
+            break;
+        }
+        default: {
+            Print2Hex("未作处理的数据包类型: ", tcpProt.GetHeader().flags);
+            break;
+        }
+    }
 }

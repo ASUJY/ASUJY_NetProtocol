@@ -18,7 +18,7 @@ bool ICMPPacket::ParseProtocolHeader(const unsigned char *packet) {
     m_header.checksum = icmp->checksum;
     m_header.identifier = icmp->identifier;
     m_header.sequence_num = icmp->sequence_num;
-    PrintICMPHeader();
+    // PrintICMPHeader();
     return true;
 }
 

@@ -78,3 +78,32 @@ bool TCPPacket::CreateProtocolHeader(
     m_header.checksum = htons(checksum);
     return true;
 }
+
+bool TCPPacket::ParseProtocolHeader(const unsigned char *packet) {
+    const tcp_header_t* tcp = reinterpret_cast<const tcp_header_t*> (packet +
+        sizeof(struct ether_header_t) + sizeof(ip_header_t));
+    m_header.source_port = tcp->source_port;
+    m_header.dest_port = tcp->dest_port;
+    m_header.sequence_num = tcp->sequence_num;
+    m_header.ack_num = tcp->ack_num;
+    m_header.data_offset = tcp->data_offset;
+    m_header.flags = tcp->flags;
+    m_header.window_size = tcp->window_size;
+    m_header.checksum = tcp->checksum;
+    m_header.urgent_pointer = tcp->urgent_pointer;
+    PrintTCPHeader();
+    return true;
+}
+
+void TCPPacket::PrintTCPHeader() {
+    LOG_INFO << "===== tcp protocol =====";
+    LOG_INFO << "source_port: " << htons(m_header.source_port);
+    LOG_INFO << "dest_port: " << htons(m_header.dest_port);
+    LOG_INFO << "sequence_num: " << htonl(m_header.sequence_num);
+    LOG_INFO << "ack_num: " << htonl(m_header.ack_num);
+    Print2Hex("data_offset: 0x", m_header.data_offset);
+    Print2Hex("flags: 0x", m_header.flags);
+    LOG_INFO << "window_size: " << htonl(m_header.window_size);
+    Print4Hex("checksum: 0x", htons(m_header.checksum));
+    Print4Hex("urgent_pointer: 0x", htons(m_header.urgent_pointer));
+}
