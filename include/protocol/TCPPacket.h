@@ -12,7 +12,9 @@
 #define IP_PROTOCOL_TCP     6
 #define TCP_SYN     0x02
 #define TCP_ACK     0x10
+#define TCP_PSH     0x08
 #define TCP_SYN_ACK TCP_SYN | TCP_ACK
+#define TCP_PSH_ACK     TCP_PSH | TCP_ACK
 
 // 伪包头（tcp、udp用）
 struct pseudo_header_t{
@@ -47,6 +49,9 @@ public:
     bool ParseProtocolHeader(const unsigned char* packet);
     bool SendProtocolPacket(
         const Machine_t &localMachine, const Machine_t &targetMachine);
+    bool SendProtocolPacketData(
+        const Machine_t &localMachine, const Machine_t &targetMachine,
+        char* data, size_t dataLen);
     bool CreateProtocolHeader(
         const Machine_t &localMachine, const Machine_t &targetMachine,
         u_char* options, size_t optionsLen, char* str, size_t strLen);

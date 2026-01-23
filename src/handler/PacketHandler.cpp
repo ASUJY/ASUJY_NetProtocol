@@ -99,7 +99,15 @@ void PacketHandlerTCP(unsigned char *userData, const unsigned char *packet) {
             tcpProt.SendProtocolPacket(machine[0], machine[1]);
         }
         case TCP_ACK: {
+            char data[100] = {0};
             std::cout << "发送给服务器的数据：";
+            fgets(data, 100, stdin);
+            uint32_t ackNum = ntohl(tcpProt.GetHeader().ack_num);
+            uint32_t sequenceNum = ntohl(tcpProt.GetHeader().sequence_num);
+            tcpProt.SetFlag(TCP_PSH_ACK);
+            tcpProt.SetAckNum(htonl(sequenceNum));
+            tcpProt.SetSeqNum(htonl(ackNum));
+            tcpProt.SendProtocolPacketData(machine[0], machine[1], data, strlen(data));
             break;
         }
         default: {

@@ -23,6 +23,8 @@ public:
     bool ParseProtocolHeader(const unsigned char* packet);
     bool SendProtocolPacket(const Machine_t &localMachine,
         const Machine_t &targetMachine);
+    bool SendProtocolPacketData(const Machine_t &localMachine,
+        const Machine_t &targetMachine, char* data, size_t dataLen);
     T1 GetHeader();
     void SetFlag(uint8_t flag);
     void SetSeqNum(uint32_t num);
@@ -45,6 +47,13 @@ template <typename T, typename T1>
 bool Protocol<T, T1>::SendProtocolPacket(const Machine_t &localMachine,
     const Machine_t &targetMachine) {
     return m_packet.SendProtocolPacket(localMachine, targetMachine);
+}
+
+template <typename T, typename T1>
+bool Protocol<T, T1>::SendProtocolPacketData(const Machine_t& localMachine,
+    const Machine_t& targetMachine, char* data, size_t dataLen) {
+    return m_packet.SendProtocolPacketData(localMachine, targetMachine,
+        data, dataLen);
 }
 
 template <typename T, typename T1>

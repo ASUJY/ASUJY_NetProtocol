@@ -53,6 +53,45 @@ bool TCPPacket::SendProtocolPacket(
     return true;
 }
 
+bool TCPPacket::SendProtocolPacketData(
+        const Machine_t &localMachine, const Machine_t &targetMachine,
+        char* data, size_t dataLen) {
+    ether_header_t etherHeader;
+    memcpy(etherHeader.etherDHost , targetMachine.m_mac.get(), ETHER_ADDR_LEN);
+    memcpy(etherHeader.etherSHost , localMachine.m_mac.get(), ETHER_ADDR_LEN);
+    etherHeader.etherType = htons(IPV4_PROTOCOL);
+
+    IPPacket ipPacket;
+    ipPacket.CreateProtocolHeader(localMachine, targetMachine,
+        sizeof(ip_header_t) + sizeof(tcp_header_t) +
+        dataLen, IP_PROTOCOL_TCP);
+    auto ipHeader = ipPacket.GetHeader();
+
+    CreateProtocolHeader(localMachine, targetMachine, nullptr,
+        0, data, dataLen);
+
+    int packetLen = sizeof(struct ether_header) + sizeof(ip_header_t) +
+            sizeof(tcp_header_t) + dataLen;
+    std::unique_ptr<unsigned char[]> packet(new unsigned char[packetLen]());
+    memcpy(packet.get(), &etherHeader, sizeof(struct ether_header_t));
+    memcpy(packet.get() + sizeof(struct ether_header_t),
+        &ipHeader, sizeof(ip_header_t));
+    memcpy(packet.get() + sizeof(struct ether_header_t) +
+        sizeof(ip_header_t), &m_header, sizeof(tcp_header_t));
+    memcpy(packet.get() + sizeof(struct ether_header_t) +
+        sizeof(ip_header_t) + sizeof(tcp_header_t),
+        data, dataLen);
+    int sent = pcap_sendpacket(localMachine.m_handler, packet.get(), packetLen);
+    if (sent < 0) {
+        LOG_ERROR << "pcap_sendpacket failed: "
+                    << pcap_geterr(localMachine.m_handler);
+        return false;
+    } else {
+        LOG_INFO << "sent TCP data package......";
+    }
+    return true;
+}
+
 bool TCPPacket::CreateProtocolHeader(
     const Machine_t &localMachine, const Machine_t &targetMachine,
     u_char *options, size_t optionsLen, char *str, size_t strLen) {
