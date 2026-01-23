@@ -19,6 +19,7 @@ add_subdirectory(src/handler)
 add_subdirectory(src/protocol)
 add_subdirectory(src/db)
 add_subdirectory(src/threadUtils)
+add_subdirectory(test)
 
 target_link_libraries(
     ${PROJECT_NAME}
