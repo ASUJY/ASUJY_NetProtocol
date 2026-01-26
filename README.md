@@ -16,6 +16,9 @@ mkdir -p build && cd build
 cmake ..
 make
 
+# 流量监控
+sudo ./NetProtocol --exec=monitor
+
 # 发送arp包
 sudo ./NetProtocol --exec=sendpacket --ip=ip地址 --protocol=arp
 
@@ -29,6 +32,7 @@ cd test && ./tcpserver
 # 然后在本台机器中执行客户端代码
 cd test && ./tcpclient 目的ip地址 目的端口号
 sudo ./NetProtocol --exec=sendpacket --ip=目的ip地址 --protocol=tcp --tp=目的端口号 --lp=客户端端口号
+
 
 ```
 
