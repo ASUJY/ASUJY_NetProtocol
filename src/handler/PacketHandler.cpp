@@ -11,10 +11,13 @@
 #include "protocol/IPPacket.h"
 #include "protocol/ICMPPacket.h"
 #include "protocol/TCPPacket.h"
+#include "handler/Monitor.h"
 
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <iostream>
+#include <thread>
+#include <iomanip>
 
 /*
  * 每抓到一个包就会执行packet_handler
@@ -115,4 +118,10 @@ void PacketHandlerTCP(unsigned char *userData, const unsigned char *packet) {
             break;
         }
     }
+}
+
+void TrafficMonitor(unsigned char *userData,
+    const struct pcap_pkthdr *pkthdr, const unsigned char *packet) {
+    Monitor monitor;
+    monitor.AddTraffic(pkthdr->len, 1);
 }

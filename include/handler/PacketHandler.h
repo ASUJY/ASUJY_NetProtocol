@@ -19,4 +19,7 @@ void PacketHandlerIP(unsigned char *userData, const unsigned char *packet);
 void PacketHandlerICMP(const unsigned char *packet);
 void PacketHandlerTCP(unsigned char *userData, const unsigned char *packet);
 
+void TrafficMonitor(unsigned char *userData, const struct pcap_pkthdr *pkthdr,
+                        const unsigned char *packet);
+
 #endif //PACKETHANDLER_H
