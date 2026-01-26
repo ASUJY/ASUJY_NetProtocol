@@ -11,7 +11,6 @@ link_libraries(/usr/lib/x86_64-linux-gnu/libmysqlclient.so)
 
 add_executable(${PROJECT_NAME}
     main.cpp
-    src/Utils.cpp
 )
 
 add_subdirectory(src/log)
@@ -19,6 +18,7 @@ add_subdirectory(src/handler)
 add_subdirectory(src/protocol)
 add_subdirectory(src/db)
 add_subdirectory(src/threadUtils)
+add_subdirectory(src/Utils)
 add_subdirectory(test)
 
 target_link_libraries(
@@ -28,4 +28,5 @@ target_link_libraries(
     threadUtils
     protocol
     db
+    utils
 )

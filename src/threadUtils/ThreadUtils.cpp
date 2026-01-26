@@ -7,13 +7,11 @@
 #include "protocol/TCPPacket.h"
 #include "protocol/ARPPacket.h"
 #include "protocol/ICMPPacket.h"
-#include "Utils.h"
+#include "Utils/Utils.h"
 
-#include <algorithm>
 #include <thread>
 
 void Worker(Machine_t &localMachine, Machine_t &targetMachine, std::string protocolType) {
-    std::transform(protocolType.begin(), protocolType.end(), protocolType.begin(), ::tolower);
     if (protocolType == "arp") {
         Protocol<ARPPacket, arp_header_t> arpProt;
         arpProt.SendProtocolPacket(localMachine, targetMachine);

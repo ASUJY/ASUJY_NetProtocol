@@ -6,7 +6,7 @@
 #include "protocol/IPPacket.h"
 #include "protocol/EthernetPacket.h"
 #include "log/Logger.h"
-#include "Utils.h"
+#include "Utils/Utils.h"
 #include "machine.h"
 #include "protocol/ARPPacket.h"
 
