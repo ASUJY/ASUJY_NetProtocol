@@ -12,6 +12,7 @@
 #include "protocol/ICMPPacket.h"
 #include "protocol/TCPPacket.h"
 #include "handler/Monitor.h"
+#include "threadUtils/ThreadPool.h"
 
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
@@ -122,6 +123,7 @@ void PacketHandlerTCP(unsigned char *userData, const unsigned char *packet) {
 
 void TrafficMonitor(unsigned char *userData,
     const struct pcap_pkthdr *pkthdr, const unsigned char *packet) {
-    Monitor monitor;
-    monitor.AddTraffic(pkthdr->len, 1);
+    static ThreadPool<Monitor> pool;
+    std::unique_ptr<Monitor> monitor(new Monitor(pkthdr, packet));
+    pool.Append(std::move(monitor));
 }

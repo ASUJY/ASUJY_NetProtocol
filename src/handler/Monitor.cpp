@@ -6,9 +6,24 @@
 #include <iostream>
 #include <iomanip>
 #include <thread>
+#include <cstring>
 
 std::atomic<uint64_t> Monitor::m_recvBytes{0};
 std::atomic<uint64_t> Monitor::m_recvPackets{0};
+
+Monitor::Monitor(const pcap_pkthdr *pkthdr, const unsigned char *packet) {
+    if (pkthdr == nullptr || packet == nullptr) {
+        throw std::invalid_argument("pkthdr or packet pointer is null");
+    }
+    if (pkthdr->len == 0 || pkthdr->len > 65535) {
+        throw std::out_of_range("invalid packet length: " +
+            std::to_string(pkthdr->len));
+    }
+    m_pkthdr = std::unique_ptr<pcap_pkthdr>(new pcap_pkthdr);
+    std::memcpy(m_pkthdr.get(), pkthdr, sizeof(pcap_pkthdr));
+    m_packet = std::unique_ptr<unsigned char[]>(new unsigned char[pkthdr->len]);
+    std::memcpy(m_packet.get(), packet, pkthdr->len);
+}
 
 void Monitor::AddTraffic(uint64_t bytes, uint64_t packets) {
     m_recvBytes += bytes;
@@ -43,4 +58,12 @@ void Monitor::DispTraffic() {
                   << "数据包: " << packets << " 个/秒 | "
                   << "状态: 监控中" << std::flush;
     }
+}
+
+void Monitor::Process() {
+    if (!m_pkthdr) {
+        return;
+    }
+    m_recvBytes += m_pkthdr->len;
+    m_recvPackets++;
 }

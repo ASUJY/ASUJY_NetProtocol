@@ -6,18 +6,25 @@
 #define MONITOR_H
 
 #include <atomic>
+#include <memory>
+#include <pcap.h>
 
 class Monitor {
 public:
     Monitor() = default;
+    Monitor(const struct pcap_pkthdr *pkthdr, const unsigned char *packet);
     ~Monitor() = default;
     void AddTraffic(uint64_t bytes, uint64_t packets);
 
     // 实时显示线程：每秒刷新一次数据
     static void DispTraffic();
+
+    void Process();
 private:
     static std::atomic<uint64_t> m_recvBytes;
     static std::atomic<uint64_t> m_recvPackets;
+    std::unique_ptr<pcap_pkthdr> m_pkthdr;
+    std::unique_ptr<unsigned char[]> m_packet;
 };
 
 #endif //MONITOR_H

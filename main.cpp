@@ -15,6 +15,7 @@
 #include "Utils/CmdUtils.h"
 
 #include "handler/Monitor.h"
+#include "threadUtils/ThreadPool.h"
 
 static void PcapDeleter(pcap_t* ptr) {
     if (ptr != nullptr) {
@@ -56,7 +57,9 @@ int main(int argc, char* argv[])
         dispTh.detach();
         std::cout << "正在监控网卡 [" << localMachine.m_device
             << "] 流量 (按 Ctrl+C 退出)..." << std::endl;
-
+        if (pcap_set_buffer_size(handler.get(), 32 * 1024 * 1024) == -1) {
+            fprintf(stderr, "设置缓冲区失败: %s\n", pcap_geterr(handler.get()));
+        }
         // 抓包处理
         ret = pcap_loop(handler.get(), 0, TrafficMonitor, nullptr);
 
