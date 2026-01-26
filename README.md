@@ -17,10 +17,10 @@ cmake ..
 make
 
 # 发送arp包
-sudo ./NetProtocol ip地址 arp
+sudo ./NetProtocol --exec=sendpacket --ip=ip地址 --protocol=arp
 
 # 发送icmp包
-sudo ./NetProtocol ip地址 icmp
+sudo ./NetProtocol --exec=sendpacket --ip=ip地址 --protocol=icmp
 
 # 发送tcp包
 # 先在另外一台机器中拉取ASUJY_NetProtocol代码并编译，然后其他服务器端代码
@@ -28,7 +28,8 @@ cd test && ./tcpserver
 
 # 然后在本台机器中执行客户端代码
 cd test && ./tcpclient 目的ip地址 目的端口号
-sudo ./NetProtocol 目的ip地址 tcp 目的端口号 客户端端口号
+sudo ./NetProtocol --exec=sendpacket --ip=目的ip地址 --protocol=tcp --tp=目的端口号 --lp=客户端端口号
+
 ```
 
 # 模块说明
