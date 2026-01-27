@@ -8,6 +8,7 @@
 #include <thread>
 #include <list>
 #include "threadUtils/Semaphore.h"
+#include "log/Logger.h"
 
 template  <typename T>
 struct HasProcess {

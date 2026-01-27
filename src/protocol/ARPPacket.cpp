@@ -11,8 +11,10 @@
 
 #include <memory>
 #include <pcap.h>
+#include <thread>
 
 ARPPacket::ResultSet ARPPacket::m_resultSet{};
+std::mutex ARPPacket::m_mtx;
 
 bool ARPPacket::ParseProtocolHeader(const unsigned char *packet) {
     const arp_header_t* arp =
@@ -22,11 +24,11 @@ bool ARPPacket::ParseProtocolHeader(const unsigned char *packet) {
     std::copy(arp->tha, arp->tha + ETH_ALEN, m_header.tha);
     std::string tpa(IPv4ToStr(m_header.tpa));
     std::string tha(MacToStr(m_header.tha));
-    if (m_resultSet.empty()) {
+    if (IsResultSetEmpty()) {
         UpdateARPInfo();
     }
-    auto iter = m_resultSet.find(tpa);
-    if (iter == m_resultSet.end()) {
+    auto isTrue = ARPPacket::IsContainsKey(tpa);
+    if (!isTrue) {
         m_header.hrd  = arp->hrd;
         m_header.prot = arp->prot;
         m_header.hln  = arp->hln;
@@ -38,13 +40,16 @@ bool ARPPacket::ParseProtocolHeader(const unsigned char *packet) {
 
         if (InsertARPInfoToDB(tpa, tha)) {
             UpdateARPInfo();
-            if (m_resultSet.find(tpa) == m_resultSet.end()) {
+            isTrue = ARPPacket::IsContainsKey(tpa);
+            if (!isTrue) {
                 LOG_ERROR << "插入失败！";
                 return false;
             }
         }
     } else {
-        if (iter->second[1].compare("00:00:00:00:00:00") == 0) {
+        std::vector<std::string> ret;
+        ARPPacket::GetResultSetElement(tpa, ret);
+        if (ret[1].compare("00:00:00:00:00:00") == 0) {
             UpdateARPInfoToDB(tpa, tha);
         }
     }
@@ -84,18 +89,30 @@ bool ARPPacket::UpdateARPInfoToDB(std::string ip, std::string mac) {
 
 bool ARPPacket::UpdateARPInfo() {
     std::string sql = "select ipv4,mac from arp_info";
-    return DBManager().ExecuteQuery(sql, m_resultSet);
+    ResultSet tempResultSet;
+
+    bool queryOk = DBManager().ExecuteQuery(sql, tempResultSet);
+    if (!queryOk) {
+        return false;
+    }
+
+    std::lock_guard<std::mutex> lock(m_mtx);
+    m_resultSet.swap(tempResultSet);
+
+    return queryOk;
 }
 
 bool ARPPacket::SendProtocolPacket(
     const Machine_t &localMachine, const Machine_t &targetMachine) {
     std::string targetIP(IPv4ToStr(targetMachine.m_ip));
-    auto iter = m_resultSet.find(targetIP);
-    if (m_resultSet.empty()) {
+    if (IsResultSetEmpty()) {
         UpdateARPInfo();
     }
-    if (iter == m_resultSet.end() ||
-        (iter->second[1].compare("00:00:00:00:00:00") == 0)) {
+    auto isTrue = ARPPacket::IsContainsKey(targetIP);
+    std::vector<std::string> ret;
+    ARPPacket::GetResultSetElement(targetIP, ret);
+    if (!isTrue ||
+        (ret[1].compare("00:00:00:00:00:00") == 0)) {
         auto len = sizeof(struct ether_header_t) + sizeof(struct arp_header_t);
         std::unique_ptr<unsigned char[]> packet(new unsigned char[len]());
         if (!packet) {
@@ -114,7 +131,6 @@ bool ARPPacket::SendProtocolPacket(
         memcpy(packet.get(), &etherHeader, sizeof(ether_header_t));
         memcpy(packet.get() + sizeof(ether_header_t),
             &m_header, sizeof(arp_header_t));
-
         int sent = pcap_sendpacket(localMachine.m_handler, packet.get(), len);
         if (sent < 0) {
             LOG_ERROR << "pcap_sendpacket failed: "
@@ -122,6 +138,18 @@ bool ARPPacket::SendProtocolPacket(
             return false;
         } else {
             LOG_INFO << "[success] sent ARP request package......";
+        }
+
+        while (!ARPPacket::IsContainsKey(targetIP)) {
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            int sent = pcap_sendpacket(localMachine.m_handler, packet.get(), len);
+            if (sent < 0) {
+                LOG_ERROR << "pcap_sendpacket failed: "
+                            << pcap_geterr(localMachine.m_handler);
+                return false;
+            } else {
+                LOG_INFO << "[success] sent ARP request package......";
+            }
         }
     }
 

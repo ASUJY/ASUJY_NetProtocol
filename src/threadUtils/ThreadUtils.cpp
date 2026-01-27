@@ -17,29 +17,43 @@ void Worker(Machine_t &localMachine, Machine_t &targetMachine, std::string proto
         arpProt.SendProtocolPacket(localMachine, targetMachine);
     } else if (protocolType == "icmp") {
         std::string targetIP(IPv4ToStr(targetMachine.m_ip));
-        auto iter = ARPPacket::m_resultSet.find(IPv4ToStr(targetMachine.m_ip));
-        while (iter == ARPPacket::m_resultSet.end() ||
-            (iter->second[1].compare("00:00:00:00:00:00") == 0)) {
+        auto isTrue = ARPPacket::IsContainsKey(IPv4ToStr(targetMachine.m_ip));
+        while (!isTrue ) {
             Protocol<ARPPacket, arp_header_t> arpProt;
             arpProt.SendProtocolPacket(localMachine, targetMachine);
             std::this_thread::sleep_for(std::chrono::seconds(5));
-            iter = ARPPacket::m_resultSet.find(IPv4ToStr(targetMachine.m_ip));
+            isTrue = ARPPacket::IsContainsKey(IPv4ToStr(targetMachine.m_ip));
         }
-        targetMachine.m_mac = StrToMac(iter->second[1]);
+        std::vector<std::string> ret;
+        ARPPacket::GetResultSetElement(IPv4ToStr(targetMachine.m_ip), ret);
+        while (ret[1].compare("00:00:00:00:00:00") == 0) {
+            Protocol<ARPPacket, arp_header_t> arpProt;
+            arpProt.SendProtocolPacket(localMachine, targetMachine);
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            ARPPacket::GetResultSetElement(IPv4ToStr(targetMachine.m_ip), ret);
+        }
+        targetMachine.m_mac = StrToMac(ret[1]);
 
         Protocol<ICMPPacket, icmp_header_t> icmpProt;
         icmpProt.SendProtocolPacket(localMachine, targetMachine);
     } else if (protocolType == "tcp") {
         std::string targetIP(IPv4ToStr(targetMachine.m_ip));
-        auto iter = ARPPacket::m_resultSet.find(IPv4ToStr(targetMachine.m_ip));
-        while (iter == ARPPacket::m_resultSet.end() ||
-            (iter->second[1].compare("00:00:00:00:00:00") == 0)) {
+        auto isTrue = ARPPacket::IsContainsKey(IPv4ToStr(targetMachine.m_ip));
+        while (!isTrue ) {
             Protocol<ARPPacket, arp_header_t> arpProt;
             arpProt.SendProtocolPacket(localMachine, targetMachine);
             std::this_thread::sleep_for(std::chrono::seconds(5));
-            iter = ARPPacket::m_resultSet.find(IPv4ToStr(targetMachine.m_ip));
+            isTrue = ARPPacket::IsContainsKey(IPv4ToStr(targetMachine.m_ip));
         }
-        targetMachine.m_mac = StrToMac(iter->second[1]);
+        std::vector<std::string> ret;
+        ARPPacket::GetResultSetElement(IPv4ToStr(targetMachine.m_ip), ret);
+        while (ret[1].compare("00:00:00:00:00:00") == 0) {
+            Protocol<ARPPacket, arp_header_t> arpProt;
+            arpProt.SendProtocolPacket(localMachine, targetMachine);
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            ARPPacket::GetResultSetElement(IPv4ToStr(targetMachine.m_ip), ret);
+        }
+        targetMachine.m_mac = StrToMac(ret[1]);
 
         Protocol<TCPPacket, tcp_header_t> tcpProt;
         tcpProt.SetFlag(TCP_SYN);

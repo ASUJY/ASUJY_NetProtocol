@@ -5,6 +5,7 @@
 #ifndef ARPPACKET_H
 #define ARPPACKET_H
 
+#include <mutex>
 #include <netinet/ether.h>
 #include "db/MySQLManager.h"
 #include "protocol/Protocol.h"
@@ -41,8 +42,25 @@ public:
     arp_header_t GetHeader() const{
         return m_header;
     }
-public:
-    static ResultSet m_resultSet;
+
+    static bool IsContainsKey(const std::string& key) {
+        std::lock_guard<std::mutex> lock(m_mtx);
+        return m_resultSet.find(key) != m_resultSet.end();
+    }
+    static bool GetResultSetElement(
+        const std::string& key, std::vector<std::string>& outValue) {
+        std::lock_guard<std::mutex> locker(m_mtx);
+        auto iter = m_resultSet.find(key);
+        if (iter != m_resultSet.end()) {
+            outValue = iter->second;
+            return true;
+        }
+        return false;
+    }
+    static bool IsResultSetEmpty() {
+        std::lock_guard<std::mutex> lock(ARPPacket::m_mtx);
+        return m_resultSet.empty();
+    }
 private:
     void PrintARPHeader();
 
@@ -55,6 +73,8 @@ private:
     bool UpdateARPInfo();
 private:
     arp_header_t m_header;
+    static ResultSet m_resultSet;
+    static std::mutex m_mtx;
 };
 
 #endif //ARPPACKET_H

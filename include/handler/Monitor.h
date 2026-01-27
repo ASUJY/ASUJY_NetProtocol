@@ -27,4 +27,7 @@ private:
     std::unique_ptr<unsigned char[]> m_packet;
 };
 
+void TrafficMonitor(unsigned char *userData, const struct pcap_pkthdr *pkthdr,
+                        const unsigned char *packet);
+
 #endif //MONITOR_H

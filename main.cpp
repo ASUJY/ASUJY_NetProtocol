@@ -76,13 +76,15 @@ int main(int argc, char* argv[])
         std::thread sendPacketThread(Worker, std::ref(localMachine),
             std::ref(targetMachine), opt.protocol);
         sendPacketThread.detach();
-
+        if (pcap_set_buffer_size(handler.get(), 32 * 1024 * 1024) == -1) {
+            fprintf(stderr, "设置缓冲区失败: %s\n", pcap_geterr(handler.get()));
+        }
         Machine_t machines[2];
         memcpy(&machines[0], &localMachine, sizeof(localMachine));
         memcpy(&machines[1], &targetMachine, sizeof(targetMachine));
 
         // 抓包处理
-        ret = pcap_loop(handler.get(), 0, PacketHandler,
+        ret = pcap_loop(handler.get(), 0, Handler,
             reinterpret_cast<u_char*>(machines));
     }
 
