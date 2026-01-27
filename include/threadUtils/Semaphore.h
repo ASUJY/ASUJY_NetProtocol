@@ -9,13 +9,13 @@
 
 class Semaphore {
 public:
-    explicit Semaphore(int count) : m_count(count < 0 ? 0 :count) {}
+    explicit Semaphore(int count = 0) : m_count(count < 0 ? 0 :count) {}
     Semaphore(const Semaphore&) = delete;
     Semaphore& operator=(const Semaphore&) = delete;
     Semaphore(Semaphore&&) = delete;
     Semaphore& operator=(Semaphore&&) = delete;
 
-    virtual ~Semaphore() {}
+    ~Semaphore() = default;
 
     void Post();
     void Wait();
