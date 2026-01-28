@@ -23,6 +23,12 @@ public:
 private:
     static std::atomic<uint64_t> m_recvBytes;
     static std::atomic<uint64_t> m_recvPackets;
+    static std::atomic<uint64_t> m_icmpBytes;
+    static std::atomic<uint64_t> m_imcpPackets;
+    static std::atomic<uint64_t> m_tcpBytes;
+    static std::atomic<uint64_t> m_tcpPackets;
+    static std::atomic<uint64_t> m_udpBytes;
+    static std::atomic<uint64_t> m_udpPackets;
     std::unique_ptr<pcap_pkthdr> m_pkthdr;
     std::unique_ptr<unsigned char[]> m_packet;
 };
