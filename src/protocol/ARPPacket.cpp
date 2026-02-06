@@ -20,27 +20,27 @@ bool ARPPacket::ParseProtocolHeader(const unsigned char *packet) {
     const arp_header_t* arp =
         reinterpret_cast<const arp_header_t*>(packet + sizeof(ether_header_t));
 
-    std::copy(arp->tpa, arp->tpa + IP_LEN, m_header.tpa);
-    std::copy(arp->tha, arp->tha + ETH_ALEN, m_header.tha);
-    std::string tpa(IPv4ToStr(m_header.tpa));
-    std::string tha(MacToStr(m_header.tha));
+    std::copy(arp->spa, arp->spa + IP_LEN, m_header.spa);
+    std::copy(arp->sha, arp->sha + ETH_ALEN, m_header.sha);
+    std::string spa(IPv4ToStr(m_header.spa));
+    std::string sha(MacToStr(m_header.sha));
     if (IsResultSetEmpty()) {
         UpdateARPInfo();
     }
-    auto isTrue = ARPPacket::IsContainsKey(tpa);
+    auto isTrue = ARPPacket::IsContainsKey(spa);
     if (!isTrue) {
         m_header.hrd  = arp->hrd;
         m_header.prot = arp->prot;
         m_header.hln  = arp->hln;
         m_header.pln  = arp->pln;
         m_header.op   = arp->op;
-        std::copy(arp->sha, arp->sha + ETH_ALEN, m_header.sha);
-        std::copy(arp->spa, arp->spa + IP_LEN, m_header.spa);
+        std::copy(arp->tha, arp->tha + ETH_ALEN, m_header.tha);
+        std::copy(arp->tpa, arp->tpa + IP_LEN, m_header.tpa);
         PrintARPHeader();
 
-        if (InsertARPInfoToDB(tpa, tha)) {
+        if (InsertARPInfoToDB(spa, sha)) {
             UpdateARPInfo();
-            isTrue = ARPPacket::IsContainsKey(tpa);
+            isTrue = ARPPacket::IsContainsKey(spa);
             if (!isTrue) {
                 LOG_ERROR << "插入失败！";
                 return false;
@@ -48,9 +48,9 @@ bool ARPPacket::ParseProtocolHeader(const unsigned char *packet) {
         }
     } else {
         std::vector<std::string> ret;
-        ARPPacket::GetResultSetElement(tpa, ret);
+        ARPPacket::GetResultSetElement(spa, ret);
         if (ret[1].compare("00:00:00:00:00:00") == 0) {
-            UpdateARPInfoToDB(tpa, tha);
+            UpdateARPInfoToDB(spa, sha);
         }
     }
 
@@ -75,7 +75,7 @@ bool ARPPacket::InsertARPInfoToDB(std::string ip, std::string mac) {
     sql += "', '";
     sql += mac;
     sql += "');";
-    return DBManager().ExecuteNonQuery(sql);
+    return MySQLManager::GetInstance().ExecuteNonQuery(sql);
 }
 
 bool ARPPacket::UpdateARPInfoToDB(std::string ip, std::string mac) {
@@ -84,14 +84,14 @@ bool ARPPacket::UpdateARPInfoToDB(std::string ip, std::string mac) {
     sql += "' WHERE ipv4 = '";
     sql += ip;
     sql += "';";
-    return DBManager().ExecuteNonQuery(sql);
+    return MySQLManager::GetInstance().ExecuteNonQuery(sql);
 }
 
 bool ARPPacket::UpdateARPInfo() {
     std::string sql = "select ipv4,mac from arp_info";
     ResultSet tempResultSet;
 
-    bool queryOk = DBManager().ExecuteQuery(sql, tempResultSet);
+    bool queryOk = MySQLManager::GetInstance().ExecuteQuery(sql, tempResultSet);
     if (!queryOk) {
         return false;
     }

@@ -64,10 +64,6 @@ public:
 private:
     void PrintARPHeader();
 
-    static MySQLManager& DBManager() {
-        static MySQLManager dbManager;
-        return dbManager;
-    }
     bool InsertARPInfoToDB(std::string ip, std::string mac);
     bool UpdateARPInfoToDB(std::string ip, std::string mac);
     bool UpdateARPInfo();
