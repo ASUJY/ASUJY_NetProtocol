@@ -7,7 +7,7 @@
 # 快速开始
 ```shell
 apt install cmake
-apt install mysql-server mysql-client libmysqlclient-dev
+apt install mysql-server mysql-client libmysqlclient-dev libboost-all-dev
 apt install libpcap-dev
 
 git clone https://github.com/ASUJY/ASUJY_NetProtocol.git
