@@ -7,21 +7,31 @@
 
 #include <map>
 #include <vector>
-#include <mysql/mysql.h>
+#include <fstream>
+#include <boost/property_tree/ini_parser.hpp>
+#include "MySQLConnectionPool.h"
 
 class MySQLManager {
     using ResultSet = std::map<std::string, std::vector<std::string>>;
+
 public:
-    MySQLManager(const std::string host = "localhost",
-        const std::string user = "root", const std::string passwd = "root",
-        const std::string dbname = "netdb", std::uint16_t port = DEFAULT_PORT,
-        const std::string charset = DEFAULT_CHARSET);
-    ~MySQLManager();
+    ~MySQLManager() = default;
 
     MySQLManager(const MySQLManager&) = delete;
     MySQLManager& operator=(const MySQLManager&) = delete;
     MySQLManager(MySQLManager&&) = delete;
     MySQLManager& operator=(MySQLManager&&) = delete;
+
+    static MySQLManager& GetInstance() {
+        static MySQLManager instance;
+        return instance;
+    }
+
+    bool Init();
+
+    void Destroy() {
+        MySQLConnectionPool::GetInstance().DestroyPool();
+    }
 
     // 执行非查询SQL（CREATE/INSERT/UPDATE/DELETE）
     bool ExecuteNonQuery(const std::string sql);
@@ -29,14 +39,13 @@ public:
     bool ExecuteQuery(const std::string sql, ResultSet& resultSet);
 
 private:
-    bool Connect(const std::string host, const std::string user,
-                    const std::string passwd, std::string dbName,
-                    std::uint16_t port = DEFAULT_PORT,
-                    const std::string charset = DEFAULT_CHARSET);
+    MySQLManager() = default;
+    DBConfig GetConfig();
+    std::string ReadSQLFromFile(const std::string filepath);
+    std::vector<std::string> SplitSqlStatements(const std::string& sql);
+
 private:
-    MYSQL* m_conn{nullptr};
-    static constexpr std::uint16_t DEFAULT_PORT = 3306;
-    static constexpr const char* DEFAULT_CHARSET = "utf8mb4";
+    DBConfig m_config;
 };
 
 #endif //MYSQLMANAGER_H

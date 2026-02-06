@@ -9,6 +9,9 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 link_libraries(/usr/lib/x86_64-linux-gnu/libpcap.so.0.8)
 link_libraries(/usr/lib/x86_64-linux-gnu/libmysqlclient.so)
 
+file(COPY sql DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY config.ini DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
 add_executable(${PROJECT_NAME}
     main.cpp
 )

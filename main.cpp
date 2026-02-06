@@ -13,9 +13,9 @@
 #include "handler/PacketHandler.h"
 #include "threadUtils/ThreadUtils.h"
 #include "Utils/CmdUtils.h"
-
 #include "handler/Monitor.h"
 #include "threadUtils/ThreadPool.h"
+#include "db/MySQLManager.h"
 
 static void PcapDeleter(pcap_t* ptr) {
     if (ptr != nullptr) {
@@ -38,6 +38,10 @@ int main(int argc, char* argv[])
     PrintIP("LOCAL IP: ", localMachine.m_ip);
     PrintMac("LOCAL MAC: ", localMachine.m_mac.get());
 
+    if (!MySQLManager::GetInstance().Init()) {
+        LOG_ERROR << "初始化数据库失败";
+        return EXIT_FAILURE;
+    }
 
     // 打开网络设备
     char errBuf[PCAP_ERRBUF_SIZE] = {0};
