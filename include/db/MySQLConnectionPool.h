@@ -7,6 +7,7 @@
 
 #include <queue>
 #include <condition_variable>
+#include <mysql/mysql.h>
 #include "DBConfig.h"
 
 class MySQLConnectionPool {

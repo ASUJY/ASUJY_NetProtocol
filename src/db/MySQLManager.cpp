@@ -5,6 +5,7 @@
 #include "db/MySQLManager.h"
 #include "log/Logger.h"
 #include "db/ConnectionGuard.h"
+#include <iostream>
 
 bool MySQLManager::Init() {
     try {
@@ -27,6 +28,7 @@ bool MySQLManager::Init() {
         return true;
     } catch (const std::exception &e) {
         LOG_ERROR << "MySQLManager 初始化异常：" << e.what();
+        std::cout << "MySQLManager 初始化异常：" << e.what();
         return false;
     }
 }

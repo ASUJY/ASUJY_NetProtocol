@@ -25,6 +25,8 @@ static void PcapDeleter(pcap_t* ptr) {
 
 int main(int argc, char* argv[])
 {
+    std::ios::sync_with_stdio(false);
+    std::cin.tie(nullptr);
     Logger::Config("NetProtocol.log");
     int ret = 0;
     Option opt;
