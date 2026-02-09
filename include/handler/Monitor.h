@@ -10,11 +10,15 @@
 #include <mutex>
 #include <pcap.h>
 #include <unordered_map>
+#include <map>
 #include <unordered_set>
+#include <vector>
 
 struct ProcessTraffic {
     std::string name;
     std::string type;
+    pid_t pid;
+    std::vector<std::pair<uint16_t, std::string>> ports; // 端口号和协议
     uint16_t sendBytes = 0;
     uint16_t recvBytes = 0;
 };
@@ -29,12 +33,13 @@ public:
     // 实时显示线程：每秒刷新一次数据
     static void DispTraffic();
 
-    static void PrintTrafficStats();
-
     void Process();
 private:
-    static void InitTerminalDisplay();
     static void UpdatePortPIDMapping();
+    static void GetProcessInfo();
+    static void GetSocketInfo();
+    static void GetProcessPorts();
+    std::vector<pid_t> findPidsUsingPortLinear(uint16_t port);
 private:
     static std::atomic<uint64_t> m_recvBytes;
     static std::atomic<uint64_t> m_recvPackets;
@@ -46,9 +51,9 @@ private:
     static std::atomic<uint64_t> m_udpPackets;
     std::unique_ptr<pcap_pkthdr> m_pkthdr;
     std::unique_ptr<unsigned char[]> m_packet;
-    static std::unordered_map<uint16_t, pid_t> m_portToPID;
-    static std::unordered_map<pid_t, ProcessTraffic> m_pidToTraffic;
-    static std::unordered_set<std::string> m_processPorts;
+
+    static std::map<pid_t, ProcessTraffic> m_pidToTraffic;
+    static std::unordered_map<ino_t, std::pair<uint16_t, std::string>> m_socketMap;
     static std::mutex m_mtx;
 
 };

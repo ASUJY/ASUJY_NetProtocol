@@ -16,6 +16,7 @@
 #include <cstring>
 #include <dirent.h>
 #include <unistd.h>
+#include <algorithm>
 
 std::atomic<uint64_t> Monitor::m_recvBytes{0};
 std::atomic<uint64_t> Monitor::m_recvPackets{0};
@@ -25,9 +26,8 @@ std::atomic<uint64_t> Monitor::m_tcpBytes{0};
 std::atomic<uint64_t> Monitor::m_tcpPackets{0};
 std::atomic<uint64_t> Monitor::m_udpBytes{0};
 std::atomic<uint64_t> Monitor::m_udpPackets{0};
-std::unordered_map<uint16_t, pid_t> Monitor::m_portToPID;
-std::unordered_map<pid_t, ProcessTraffic> Monitor::m_pidToTraffic;
-std::unordered_set<std::string> Monitor::m_processPorts;
+std::map<pid_t, ProcessTraffic> Monitor::m_pidToTraffic;
+std::unordered_map<ino_t, std::pair<uint16_t, std::string>> Monitor::m_socketMap;
 std::mutex Monitor::m_mtx;
 
 Monitor::Monitor(const pcap_pkthdr *pkthdr, const unsigned char *packet) {
@@ -69,9 +69,9 @@ static void TrafficChange(uint64_t bytes, double &speed, std::string& unit) {
 }
 
 void Monitor::DispTraffic() {
+    UpdatePortPIDMapping();
     while (true) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        UpdatePortPIDMapping();
+        std::this_thread::sleep_for(std::chrono::seconds(2));
         std::lock_guard<std::mutex> locker(m_mtx);
         uint64_t bytes = m_recvBytes.exchange(0);
         uint64_t icmpBytes = m_icmpBytes.exchange(0);
@@ -97,17 +97,13 @@ void Monitor::DispTraffic() {
         system("clear");
 
         std::cout << std::fixed << std::setprecision(2)
-                  << "实时流量: " << speed << " " << unit << " | "
-                  << "数据包: " << packets << " 个/秒 | "
-                  << "状态: 监控中" << std::endl;
-        std::cout
-                  << "TCP流量: " << tcpSpeed << " " << tcpUnit << " | "
+        << "实时流量: " << speed << " " << unit << " | "
+        << "数据包: " << packets << " 个/秒 | " << "状态: 监控中" << std::endl;
+        std::cout << "TCP流量: " << tcpSpeed << " " << tcpUnit << " | "
                   << "数据包: " << tcpPackets << " 个/秒 | " << std::endl;
-        std::cout
-                  << "UDP流量: " << udpSpeed << " " << udpUnit << " | "
+        std::cout << "UDP流量: " << udpSpeed << " " << udpUnit << " | "
                   << "数据包: " << udpPackets << " 个/秒 | " << std::endl;
-        std::cout
-                  << "ICMP流量: " << icmpSpeed << " " << icmpUnit << " | "
+        std::cout << "ICMP流量: " << icmpSpeed << " " << icmpUnit << " | "
                   << "数据包: " << icmpPackets << " 个/秒 | " << std::endl;
 
         std::cout << std::string(40, '=') << std::endl;
@@ -121,31 +117,29 @@ void Monitor::DispTraffic() {
         for (const auto& pair : m_pidToTraffic) {
             const auto& pid = pair.first;
             const auto& traffic = pair.second;
-
-            std::cout << std::left
+            if (!traffic.ports.empty()) {
+                std::cout << std::left
                       << std::setw(15) << traffic.name
                       << std::setw(8)  << pid
                       << std::setw(12) << traffic.sendBytes
                       << std::setw(12) << traffic.recvBytes << std::endl;
+            }
         }
-
-        // 调整光标回退行数：原有4行 + 进程信息的行数（表头3行 + 进程数行）
-        // 先回退到顶部，确保每次输出覆盖原有内容
-        // 计算需要回退的总行数：4（原有流量行） + 3（进程表头） + m_pidToTraffic.size()（进程行）
-        // int totalLines = 4 + 3 + static_cast<int>(m_pidToTraffic.size());
-        // count = count > totalLines ? count : totalLines;
-        // std::cout << "\033[" << count << "A\r" << std::flush;
         std::cout << std::flush;
     }
 }
 
 void Monitor::Process() {
-    std::lock_guard<std::mutex> locker(m_mtx);
+    // std::lock_guard<std::mutex> locker(m_mtx);
     if (!m_pkthdr) {
         return;
     }
-    m_recvBytes += m_pkthdr->len;
-    m_recvPackets++;
+    {
+        std::lock_guard<std::mutex> locker(m_mtx);
+        m_recvBytes += m_pkthdr->len;
+        m_recvPackets++;
+    }
+
     Protocol<EthernetPacket, ether_header_t> etherProt;
     etherProt.ParseProtocolHeader(m_packet.get());
     auto protocolType = ntohs(etherProt.GetHeader().etherType);
@@ -159,12 +153,14 @@ void Monitor::Process() {
     ipProt.ParseProtocolHeader(m_packet.get());
     switch (ipProt.GetHeader().protocol) {
         case IPPROTO_ICMP: {
+            std::lock_guard<std::mutex> locker(m_mtx);
             m_icmpBytes += m_pkthdr->len;
             m_icmpPackets++;
             // break;
             return;
         }
         case IPPROTO_TCP: {
+            std::lock_guard<std::mutex> locker(m_mtx);
             m_tcpBytes += m_pkthdr->len;
             m_tcpPackets++;
             Protocol<TCPPacket, tcp_header_t> tcpProt;
@@ -174,6 +170,7 @@ void Monitor::Process() {
             break;
         }
         case IPPROTO_UDP: {
+            std::lock_guard<std::mutex> locker(m_mtx);
             m_udpBytes += m_pkthdr->len;
             m_udpPackets++;
             return;
@@ -184,41 +181,53 @@ void Monitor::Process() {
     }
 
     pid_t pid = -1;
-    if (m_portToPID.find(srcPort) != m_portToPID.end()) {
-        pid = m_portToPID[srcPort];
+    auto srcPortRes = findPidsUsingPortLinear(srcPort);
+    auto dstPortRes = findPidsUsingPortLinear(dstPort);
+    if (!srcPortRes.empty()) {
+        pid = srcPortRes[0];
         isOutgoing = true;  // 源端口是本地端口，属于发送流量
-    } else if (m_portToPID.find(dstPort) != m_portToPID.end()) {
-        pid = m_portToPID[dstPort];
+    } else if (!dstPortRes.empty()) {
+        pid = dstPortRes[0];
         isOutgoing = false;
     }
 
+
+
     if (pid != -1) {
         if (isOutgoing) {
+            std::lock_guard<std::mutex> locker(m_mtx);
             m_pidToTraffic[pid].sendBytes += m_pkthdr->len;;
+            auto temp = m_pidToTraffic[pid].sendBytes;
+            int i = 0;
         } else {
+            std::lock_guard<std::mutex> locker(m_mtx);
             m_pidToTraffic[pid].recvBytes += m_pkthdr->len;;
         }
     }
 }
 
-void Monitor::PrintTrafficStats() {
-    // system("clear");
-    // std::cout << "============================================" << std::endl;
-    // std::cout << "进程名\t\tPID\t发送字节\t接收字节" << std::endl;
-    // std::cout << "============================================" << std::endl;
-    //
-    // for (const auto& pair : m_pidToTraffic) {
-    //     const auto& pid = pair.first;
-    //     const auto& traffic = pair.second;
-    //
-    //     std::cout << traffic.name << "\t\t"
-    //               << pid << "\t"
-    //               << traffic.sendBytes << "\t\t"
-    //               << traffic.recvBytes << std::endl;
-    // }
-    // std::cout << std::flush;
-}
+std::vector<pid_t> Monitor::findPidsUsingPortLinear(uint16_t port) {
 
+    std::vector<pid_t> result;
+
+    for (const auto& pair : m_pidToTraffic) {
+        const ProcessTraffic& info = pair.second;
+
+        // 使用std::find_if搜索端口
+        auto it = std::find_if(
+            info.ports.begin(),
+            info.ports.end(),
+            [port](const std::pair<uint16_t, std::string>& portInfo) {
+                return portInfo.first == port;
+            });
+
+        if (it != info.ports.end()) {
+            result.push_back(info.pid);
+        }
+    }
+
+    return result;
+}
 
 static void DirDeleter(DIR* dir) {
     if (dir != nullptr) {
@@ -226,106 +235,191 @@ static void DirDeleter(DIR* dir) {
     }
 }
 
-void Monitor::UpdatePortPIDMapping() {
-    std::lock_guard<std::mutex> locker(m_mtx);
-    m_portToPID.clear();
-    m_processPorts.clear();
-
-    // 遍历/proc下的所有进程
-    std::string procPath = "/proc/";
-    std::unique_ptr<DIR, decltype(DirDeleter)*> procDir(opendir(procPath.c_str()), DirDeleter);
+void Monitor::GetProcessInfo() {
+    std::unique_ptr<DIR, decltype(DirDeleter)*> procDir(
+        opendir("/proc"), DirDeleter);
     if (!procDir) {
         return;
     }
 
-    dirent* entry;
+    struct dirent* entry = nullptr;
     while ((entry = readdir(procDir.get())) != nullptr) {
-        if (!isdigit(entry->d_name[0])) {
-            continue;
-        }
-        std::string pidStr = entry->d_name;
-        std::string fdPath = procPath + pidStr + "/fd/";
-        std::unique_ptr<DIR, decltype(DirDeleter)*> fdDir(opendir(fdPath.c_str()), DirDeleter);
-        if (!fdDir) {
-            continue;
-        }
+        if (entry->d_type == DT_DIR) {
+            char* endptr = nullptr;
+            pid_t pid = strtol(entry->d_name, &endptr, 10);
+            if (*endptr == '\0' && pid > 0) {
+                ProcessTraffic info;
+                info.pid = pid;
 
-        dirent* fdEntry;
-        while ((fdEntry = readdir(fdDir.get())) != nullptr) {
-            if (!isdigit(fdEntry->d_name[0])) {
-                continue;
-            }
-            // 读取socket连接信息
-            std::string linkPath = fdPath + fdEntry->d_name;
-            char buf[256];
-            ssize_t len = readlink(linkPath.c_str(), buf, sizeof(buf) - 1);
-            if (len <= 0) {
-                continue;
-            }
-            buf[len] = '\0';
-
-            // 匹配IPv4 TCP/UDP socket
-            if (strstr(buf, "socket:[") == nullptr) {
-                continue;
-            }
-
-            // 读取端口信息
-            std::string sockPath = "/proc/" + pidStr + "/net/tcp";
-            std::ifstream sockFile(sockPath);
-            std::string line;
-            pid_t pid = std::stoi(pidStr);
-
-            std::getline(sockFile, line);
-            while (std::getline(sockFile, line)) {
-                std::istringstream iss(line);
-                std::string idx;
-                std::string localAddr;
-                std::string remAddr;
-                std::string state;
-                iss >> idx >> localAddr >> remAddr >> state;
-
-                // 解析本地地址和端口（格式：0100007F:0050 -> 127.0.0.1:80）
-                size_t colonPos = localAddr.find(":");
-                if (colonPos == std::string::npos) {
-                    continue;
-                }
-                std::string portHex = localAddr.substr(colonPos + 1);
-                uint16_t port = std::stoi(portHex, nullptr, 16);
-                m_portToPID[port] = pid;
-
-                //获取进程名
-                std::string commPath = "/proc/" + pidStr + "/comm";
+                // 读取进程名
+                std::string commPath = "/proc/" + std::to_string(pid) + "/comm";
                 std::ifstream commFile(commPath);
-                std::string procName;
-                if (std::getline(commFile, procName)) {
-                    m_pidToTraffic[pid].name = procName;
-                    if (procName.compare("firefox") == 0) {
-                        std::cout << "firefox:" << " pid " << pid << " port " << port << std::endl;
+                if (commFile) {
+                    std::getline(commFile, info.name);
+                    // 移除可能的换行符
+                    if (!info.name.empty() && info.name.back() == '\n') {
+                        info.name.pop_back();
+                    }
+                } else {
+                    // 如果comm文件不存在，尝试从cmdline获取
+                    std::string cmdlinePath = "/proc/" + std::to_string(pid) + "/cmdline";
+                    std::ifstream cmdlineFile(cmdlinePath);
+                    if (cmdlineFile) {
+                        std::getline(cmdlineFile, info.name);
+                        // 提取可执行文件名（去掉路径）
+                        size_t lastSlash = info.name.find_last_of('/');
+                        if (lastSlash != std::string::npos) {
+                            info.name = info.name.substr(lastSlash + 1);
+                        }
+                        // 去掉参数部分（如果有）
+                        size_t nullChar = info.name.find('\0');
+                        if (nullChar != std::string::npos) {
+                            info.name = info.name.substr(0, nullChar);
+                        }
+                    } else {
+                        info.name = "unknown";
                     }
                 }
-            }
-
-            // 处理UDP端口
-            sockPath = "/proc/" + pidStr + "/net/udp";
-            std::ifstream udpFile(sockPath);
-            std::getline(udpFile, line); // 跳过表头
-            while (std::getline(udpFile, line)) {
-                std::istringstream iss(line);
-                std::string idx;
-                std::string localAddr;
-                std::string remAddr;
-                std::string state;
-                iss >> idx >> localAddr >> remAddr >> state;
-
-                size_t colonPos = localAddr.find(':');
-                if (colonPos == std::string::npos) continue;
-
-                std::string portHex = localAddr.substr(colonPos + 1);
-                uint16_t port = std::stoi(portHex, nullptr, 16);
-                m_portToPID[port] = pid;
+                std::lock_guard<std::mutex> locker(m_mtx);
+                m_pidToTraffic[pid] = info;
             }
         }
     }
+}
+
+// 将十六进制字符串转换为整数
+uint32_t hexToDec(const std::string& hexStr) {
+    uint32_t result = 0;
+    for (char c : hexStr) {
+        result *= 16;
+        if (c >= '0' && c <= '9') {
+            result += c - '0';
+        } else if (c >= 'A' && c <= 'F') {
+            result += c - 'A' + 10;
+        } else if (c >= 'a' && c <= 'f') {
+            result += c - 'a' + 10;
+        }
+    }
+    return result;
+}
+
+void Monitor::GetSocketInfo() {
+    std::vector<std::pair<std::string, std::string>> netFiles = {
+        {"/proc/net/tcp", "tcp"},
+        {"/proc/net/tcp6", "tcp6"},
+        {"/proc/net/udp", "udp"},
+        {"/proc/net/udp6", "udp6"}
+    };
+
+    for (const auto& fileInfo : netFiles) {
+        std::ifstream netFile(fileInfo.first);
+        if (!netFile) {
+            continue;
+        }
+
+        std::string line;
+        std::getline(netFile, line); // 跳过标题行
+        while (std::getline(netFile, line)) {
+            if (line.empty()) continue;
+            std::istringstream iss(line);
+            std::vector<std::string> tokens;
+            std::string token;
+
+            while (std::getline(iss, token, ' ')) {
+                if (!token.empty()) {
+                    tokens.push_back(token);
+                }
+            }
+
+            if (tokens.size() < 10) continue;
+
+            // 本地地址是tokens[1]（在sl之后）
+            // 格式: 0100007F:0277
+            std::string localAddr = tokens[1];
+            size_t colonPos = localAddr.find(':');
+            if (colonPos == std::string::npos) continue;
+
+            std::string portHex = localAddr.substr(colonPos + 1);
+            uint16_t port = hexToDec(portHex);
+
+            // inode是tokens[9]（在/proc/net/tcp中）
+            ino_t inode = 0;
+            if (tokens.size() > 9) {
+                for (size_t i = 9; i < tokens.size(); i++) {
+                    char* endptr = nullptr;
+                    ino_t val = strtoul(tokens[i].c_str(), &endptr, 10);
+                    if (*endptr == '\0' && val > 0) {
+                        inode = val;
+                        break;
+                    }
+                }
+            }
+            if (inode > 0) {
+                std::lock_guard<std::mutex> locker(m_mtx);
+                m_socketMap[inode] = std::make_pair(port, fileInfo.second);
+            }
+        }
+        netFile.close();
+    }
+}
+
+void Monitor::GetProcessPorts() {
+    std::lock_guard<std::mutex> locker(m_mtx);
+    for (auto& pair : m_pidToTraffic) {
+        std::string fdPath = "/proc/" + std::to_string(pair.second.pid) + "/fd";
+        std::unique_ptr<DIR, decltype(DirDeleter)*> fdDir(opendir(
+            fdPath.c_str()), DirDeleter);
+        if (!fdDir) continue;
+
+        struct dirent* fdEntry;
+        while ((fdEntry = readdir(fdDir.get())) != nullptr) {
+            std::string fdName = fdEntry->d_name;
+            if (fdName == "." || fdName == "..") continue;
+            std::string linkPath = fdPath + "/" + fdName;
+            char linkTarget[1024];
+            ssize_t len = readlink(linkPath.c_str(), linkTarget, sizeof(linkTarget) - 1);
+            if (len == -1) continue;
+
+            linkTarget[len] = '\0';
+            std::string target(linkTarget);
+
+            if (target.find("socket:[") != std::string::npos) {
+                // 提取inode号
+                size_t start = target.find('[') + 1;
+                size_t end = target.find(']');
+                if (start < end) {
+                    std::string inodeStr = target.substr(start, end - start);
+                    char* endptr = nullptr;
+                    ino_t inode = strtoul(inodeStr.c_str(), &endptr, 10);
+                    if (*endptr == '\0' && inode > 0) {
+                        auto it = m_socketMap.find(inode);
+                        if (it != m_socketMap.end()) {
+                            // 判断是否已经添加该端口
+                            bool found = false;
+                            for (const auto& portInfo  : pair.second.ports) {
+                                if (portInfo.first == it->second.first) {
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if (!found) {
+                                pair.second.ports.push_back(it->second);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void Monitor::UpdatePortPIDMapping() {
+    // 获取pid和进程名
+    GetProcessInfo();
+    // 从/proc/net/tcp和/proc/net/udp获取socket信息
+    GetSocketInfo();
+    // 获取进程和端口的映射关系
+    GetProcessPorts();
 }
 
 
