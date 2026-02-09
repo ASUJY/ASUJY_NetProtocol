@@ -3,6 +3,13 @@
 本项目聚焦于网络通信协议的实现。目前已实现 **`ARP协议`**，**`IP协议`**，**`ICMP协议`** 和 **`TCP协议`**。  
 实现技术：c++11，cmake，mysql，libpcap
 
+**流量监控效果图**:  
+<img src="docs/Rendering.png">
+
+如果是想体验向服务器建立TCP连接并且发送数据，需要先执行以下命令。
+```shell
+sudo iptables -A OUTPUT -p tcp --tcp-flags RST RST -s 本机IP地址 -d 目的主机IP地址 --dport 目的主机端口号 -j DROP
+```
 
 # 快速开始
 ```shell
